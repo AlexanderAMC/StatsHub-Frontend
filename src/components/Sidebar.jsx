@@ -27,8 +27,9 @@ function SidebarContent({ onNavigate, onOpenProfile }) {
 
       <nav aria-label="Navegación principal">
         <ul className="nav flex-column mb-auto gap-2">
-          {NAV_ITEMS.map(({ path, label, icon: Icon, permission }) => {
+          {NAV_ITEMS.map(({ path, label, icon: Icon, permission, hideIfDenied }) => {
             const locked = permission && !can(permission);
+            if (locked && hideIfDenied) return null;
             return (
               <li className="nav-item" key={path}>
                 <NavLink
@@ -116,7 +117,7 @@ export default function Sidebar({ showMenu, onCloseMenu, onOpenProfile }) {
     <>
       {/* Escritorio: barra fija */}
       <aside
-        className="d-none d-lg-block p-3 text-white shadow-lg sticky-top"
+        className="no-print d-none d-lg-block p-3 text-white shadow-lg sticky-top"
         style={{ width: '280px', minWidth: '280px', height: '100vh', backgroundColor: SIDEBAR_BG }}
       >
         <SidebarContent onOpenProfile={onOpenProfile} />
@@ -126,7 +127,7 @@ export default function Sidebar({ showMenu, onCloseMenu, onOpenProfile }) {
       <Offcanvas
         show={showMenu}
         onHide={onCloseMenu}
-        className="text-white d-lg-none"
+        className="no-print text-white d-lg-none"
         style={{ backgroundColor: SIDEBAR_BG, width: '280px' }}
       >
         <Offcanvas.Header closeButton closeVariant="white">

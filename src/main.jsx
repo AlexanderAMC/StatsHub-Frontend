@@ -10,4 +10,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>,
 );
 
-
+// PWA: el service worker solo se registra en la versión de producción (npm run build).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Si falla el registro, la app sigue funcionando como una página normal.
+    });
+  });
+}

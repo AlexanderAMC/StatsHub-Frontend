@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
-import { deportivosService } from '../services/deportivos.service';
+import { MATCH_STATUS } from '../data/constants';
+import { computeStandings } from '../utils/standings';
 
 const COLUMNS = [
   { key: 'pj', label: 'PJ', title: 'Partidos jugados' },
@@ -14,51 +15,29 @@ const COLUMNS = [
 ];
 
 export default function Posiciones() {
-  const { tournaments } = useOutletContext();
+  const { tournaments, matches } = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  const [standings, setStandings] = useState([]);
-  const [cargando, setCargando] = useState(true);
 
   const requestedId = Number(searchParams.get('torneo'));
-  const selected = tournaments.find((t) => t.id === requestedId) ?? tournaments[0];
+  const selected =
+    tournaments.find((t) => t.id === requestedId) ??
+    tournaments.find((t) => t.status === 'En Curso') ??
+    tournaments[0];
 
-  // Llamada a la API cuando cambia el torneo seleccionado
-  useEffect(() => {
-    if (!selected) return;
-    
-    const cargarPosiciones = async () => {
-      setCargando(true);
-      try {
-        const data = await deportivosService.getPosiciones(selected.id);
-        
-        // Mapeamos los datos del backend a las columnas que espera la tabla
-        setStandings(data.map(r => ({
-          team: r.equipo,
-          pj: Number(r.pj),
-          pg: Number(r.pg),
-          pe: Number(r.pe),
-          pp: Number(r.pp),
-          gf: Number(r.gf),
-          gc: Number(r.gc),
-          dg: Number(r.dif),
-          pts: Number(r.puntos)
-        })));
-      } catch (error) {
-        console.error('Error al cargar posiciones:', error);
-      } finally {
-        setCargando(false);
-      }
-    };
-    cargarPosiciones();
-  }, [selected]);
+  const tournamentMatches = useMemo(
+    () => (selected ? matches.filter((m) => m.tournamentId === selected.id) : []),
+    [matches, selected],
+  );
+  const standings = useMemo(
+    () => computeStandings(tournamentMatches.filter((m) => m.status === MATCH_STATUS.FINISHED)),
+    [tournamentMatches],
+  );
+  const liveCount = tournamentMatches.filter((m) => m.status === MATCH_STATUS.LIVE).length;
 
   if (!selected) {
     return (
       <div className="card border-0 shadow-sm rounded-3 bg-white">
-        <EmptyState title="Aún no hay torneos">
-          Crea un torneo en Gestión de torneos para ver sus posiciones.
-        </EmptyState>
+        <EmptyState title="Aún no hay torneos">Crea un torneo en Gestión de torneos para ver sus posiciones.</EmptyState>
       </div>
     );
   }
@@ -85,11 +64,10 @@ export default function Posiciones() {
 
       <p className="text-muted small mb-4">
         Se calcula con los partidos finalizados: 3 puntos por victoria y 1 por empate.
+        {liveCount > 0 && ` ${liveCount} partido${liveCount > 1 ? 's' : ''} en juego se sumará${liveCount > 1 ? 'n' : ''} al finalizar.`}
       </p>
 
-      {cargando ? (
-        <div className="text-center py-5 text-muted">Cargando posiciones...</div>
-      ) : standings.length === 0 ? (
+      {standings.length === 0 ? (
         <EmptyState title="Aún no hay partidos finalizados">
           Cuando se finalice un partido de este torneo, su resultado aparecerá aquí.
         </EmptyState>

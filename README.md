@@ -1,16 +1,56 @@
-# React + Vite
+# StatsHub Deportivo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Plataforma web de gestión y analítica deportiva: torneos, equipos y jugadores, calendario, actas digitales
+en vivo, estadísticas y predicción. Proyecto de Título, INACAP sede Puente Alto, 2026.
 
-Currently, two official plugins are available:
+## Tecnologías
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 + Vite
+- React Router (rutas) y React Bootstrap / Bootstrap 5 (interfaz)
+- lucide-react (íconos)
+- PWA instalable (manifest + service worker)
+- Backend previsto: Node.js + Express, PostgreSQL, AWS (RDS, S3, EC2)
 
-## React Compiler
+## Cómo ejecutarlo
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm install react-router-dom
+npm run dev        # desarrollo
+npm run build      # producción (aquí se activa el service worker)
+npm run preview    # probar la versión de producción e instalar la PWA
+npm run lint
+```
 
-## Expanding the ESLint configuration
+## Roles y permisos
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Rol | Puede |
+|---|---|
+| Invitado (sin cuenta) | Ver marcadores, calendario, posiciones y estadísticas |
+| Espectador / Jugador | Lo anterior y exportar reportes |
+| Entrenador | Lo anterior y administrar el plantel de su equipo |
+| Árbitro / Estadígrafo | Lo anterior y registrar actas |
+| Organizador | Todo lo anterior, más torneos, equipos, transferencias, programación y fixture |
+| Administrador | Todo, más usuarios y roles |
+
+Las cuentas nuevas se crean como espectador. Cuentas de demostración en la pantalla de login.
+
+## Estructura
+
+```
+src/
+  components/   Layout, Sidebar, Header, notificaciones, modales
+  pages/        Login, Dashboard, Torneos, Equipos, EquipoDetalle, JugadorDetalle,
+                Calendario, Actas, Estadisticas, Usuarios
+  context/      AuthProvider (sesión y cuentas), DataProvider (datos de la aplicación)
+  hooks/        useAuth, useData
+  data/         datos simulados, constantes, roles y permisos, menú
+  utils/        estadísticas, predicción, fixture, fechas, exportación CSV
+public/         manifest.webmanifest, sw.js, íconos
+```
+
+## Estado actual
+
+Los datos son simulados y viven en memoria (se reinician al recargar). La sesión y las cuentas se guardan
+en el navegador. El siguiente paso es reemplazar `DataProvider` y `AuthProvider` por llamadas a la API REST
+(contraseñas con hash y token JWT, permisos verificados en el servidor).

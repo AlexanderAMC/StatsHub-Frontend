@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Form, Modal } from 'react-bootstrap';
+import { Form } from 'react-bootstrap';
+import FormModal, { Field } from './FormModal';
 import { TOURNAMENT_STATUSES } from '../data/constants';
 
 const MAX_TEAMS = 64;
@@ -10,16 +11,12 @@ function validate(values, existingNames) {
   const teams = Number(values.teams);
 
   if (!name) errors.name = 'Ingresa el nombre del torneo.';
-  else if (existingNames.some((n) => n.toLowerCase() === name.toLowerCase())) {
-    errors.name = 'Ya existe un torneo con ese nombre.';
-  }
-
-  if (!values.category.trim()) errors.category = 'Ingresa la categoría.';
-
-  if (!Number.isInteger(teams) || teams < 2 || teams > MAX_TEAMS) {
-    errors.teams = `Ingresa un número de equipos entre 2 y ${MAX_TEAMS}.`;
-  }
-
+  else if (existingNames.some((n) => n.toLowerCase() === name.toLowerCase())) errors.name = 'Ya existe un torneo con ese nombre.';
+  if (!values.category) errors.category = 'Elige una categoría.';
+  if (!Number.isInteger(teams) || teams < 2 || teams > MAX_TEAMS) errors.teams = `Ingresa un número entre 2 y ${MAX_TEAMS}.`;
+  if (!values.startDate) errors.startDate = 'Indica la fecha de inicio.';
+  if (!values.endDate) errors.endDate = 'Indica la fecha de término.';
+  else if (values.startDate && values.endDate < values.startDate) errors.endDate = 'Debe ser posterior al inicio.';
   return errors;
 }
 
@@ -28,108 +25,79 @@ export default function TournamentModal({ tournament, existingNames, categories,
   const isEditing = Boolean(tournament);
   const [values, setValues] = useState({
     name: tournament?.name ?? '',
-    category: tournament?.category ?? '',
+    category: tournament?.category ?? categories[0] ?? '',
     teams: tournament?.teams ?? 10,
     status: tournament?.status ?? 'Planificado',
+    startDate: tournament?.startDate ?? '',
+    endDate: tournament?.endDate ?? '',
   });
   const [errors, setErrors] = useState({});
 
   const setField = (field) => (e) => setValues((prev) => ({ ...prev, [field]: e.target.value }));
+  const categoryOptions = [...new Set([...categories, values.category])].filter(Boolean);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const found = validate(values, existingNames);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
-
     onSave({
       name: values.name.trim(),
-      category: values.category.trim(),
+      category: values.category,
       teams: Number(values.teams),
       status: values.status,
+      startDate: values.startDate,
+      endDate: values.endDate,
+      season: values.startDate.slice(0, 4),
     });
   };
 
   return (
-    <Modal show onHide={onHide} centered>
-      <Modal.Header closeButton closeVariant="white" className="text-white border-0" style={{ backgroundColor: '#1E0A3C' }}>
-        <Modal.Title as="h5" className="fw-bold">
-          {isEditing ? 'Editar torneo' : 'Crear nuevo torneo'}
-        </Modal.Title>
-      </Modal.Header>
+    <FormModal
+      title={isEditing ? 'Editar torneo' : 'Crear nuevo torneo'}
+      onHide={onHide}
+      onSubmit={handleSubmit}
+      submitLabel={isEditing ? 'Guardar cambios' : 'Guardar torneo'}
+    >
+      <Field id="torneo-nombre" label="Nombre del torneo" error={errors.name}>
+        <Form.Control type="text" placeholder="Ej: Copa Verano 2026" value={values.name} onChange={setField('name')} isInvalid={Boolean(errors.name)} autoFocus />
+      </Field>
 
-      <Form onSubmit={handleSubmit} noValidate>
-        <Modal.Body className="p-4 d-flex flex-column gap-3">
-          <Form.Group controlId="torneo-nombre">
-            <Form.Label className="fw-bold text-dark">Nombre del torneo</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Ej: Copa Verano 2026"
-              value={values.name}
-              onChange={setField('name')}
-              isInvalid={Boolean(errors.name)}
-              autoFocus
-            />
-            <Form.Control.Feedback type="invalid">{errors.name}</Form.Control.Feedback>
-          </Form.Group>
-
-          <Form.Group controlId="torneo-categoria">
-            <Form.Label className="fw-bold text-dark">Categoría</Form.Label>
-            <Form.Control
-              type="text"
-              list="categorias-torneo"
-              placeholder="Ej: Fútbol 11 Varones"
-              value={values.category}
-              onChange={setField('category')}
-              isInvalid={Boolean(errors.category)}
-            />
-            <datalist id="categorias-torneo">
-              {categories.map((c) => (
-                <option key={c} value={c} />
+      <div className="row g-3">
+        <div className="col-12 col-sm-6">
+          <Field id="torneo-categoria" label="Categoría" error={errors.category}>
+            <Form.Select value={values.category} onChange={setField('category')} isInvalid={Boolean(errors.category)}>
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>{c}</option>
               ))}
-            </datalist>
-            <Form.Control.Feedback type="invalid">{errors.category}</Form.Control.Feedback>
-          </Form.Group>
-
-          <div className="row g-3">
-            <div className="col-6">
-              <Form.Group controlId="torneo-equipos">
-                <Form.Label className="fw-bold text-dark">Cantidad de equipos</Form.Label>
-                <Form.Control
-                  type="number"
-                  min="2"
-                  max={MAX_TEAMS}
-                  value={values.teams}
-                  onChange={setField('teams')}
-                  isInvalid={Boolean(errors.teams)}
-                />
-                <Form.Control.Feedback type="invalid">{errors.teams}</Form.Control.Feedback>
-              </Form.Group>
-            </div>
-            <div className="col-6">
-              <Form.Group controlId="torneo-estado">
-                <Form.Label className="fw-bold text-dark">Estado</Form.Label>
-                <Form.Select value={values.status} onChange={setField('status')}>
-                  {TOURNAMENT_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </div>
-          </div>
-        </Modal.Body>
-
-        <Modal.Footer className="bg-light">
-          <button type="button" className="btn btn-secondary" onClick={onHide}>
-            Cancelar
-          </button>
-          <button type="submit" className="btn text-white fw-bold" style={{ backgroundColor: '#1E0A3C' }}>
-            {isEditing ? 'Guardar cambios' : 'Guardar torneo'}
-          </button>
-        </Modal.Footer>
-      </Form>
-    </Modal>
+            </Form.Select>
+          </Field>
+        </div>
+        <div className="col-12 col-sm-6">
+          <Field id="torneo-estado" label="Estado">
+            <Form.Select value={values.status} onChange={setField('status')}>
+              {TOURNAMENT_STATUSES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </Form.Select>
+          </Field>
+        </div>
+        <div className="col-12 col-sm-4">
+          <Field id="torneo-equipos" label="Cupos de equipos" error={errors.teams}>
+            <Form.Control type="number" min="2" max={MAX_TEAMS} value={values.teams} onChange={setField('teams')} isInvalid={Boolean(errors.teams)} />
+          </Field>
+        </div>
+        <div className="col-6 col-sm-4">
+          <Field id="torneo-inicio" label="Inicio" error={errors.startDate}>
+            <Form.Control type="date" value={values.startDate} onChange={setField('startDate')} isInvalid={Boolean(errors.startDate)} />
+          </Field>
+        </div>
+        <div className="col-6 col-sm-4">
+          <Field id="torneo-fin" label="Término" error={errors.endDate}>
+            <Form.Control type="date" value={values.endDate} onChange={setField('endDate')} isInvalid={Boolean(errors.endDate)} />
+          </Field>
+        </div>
+      </div>
+    </FormModal>
   );
 }

@@ -1,15 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap');
 
 /* ---------- Base: la app ocupa toda la pantalla ---------- */
-html {
-  font-size: 100%;
-}
-@media (min-width: 1600px) {
-  html { font-size: 106.25%; }
-}
-@media (min-width: 1920px) {
-  html { font-size: 112.5%; }
-}
+html { font-size: 100%; }
+@media (min-width: 1600px) { html { font-size: 106.25%; } }
+@media (min-width: 1920px) { html { font-size: 112.5%; } }
 
 html,
 body {
@@ -35,54 +29,143 @@ body {
   text-align: left;
 }
 
-/* ---------- Utilidades usadas en los componentes ---------- */
+/* ---------- Utilidades ---------- */
 .cursor-pointer { cursor: pointer; }
 .transition-all { transition: all 0.2s ease; }
 .nav-link.hover-white:hover {
   color: #fff !important;
   background: rgba(255, 255, 255, 0.08);
 }
-
-/* ---------- Login ---------- */
+.dropdown-toggle-no-caret::after { display: none; }
 .font-display {
   font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.01em;
 }
 
+/* ---------- Animaciones ---------- */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes panelIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+@keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.75); } }
+@keyframes scoreTick { 0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
+
+.anim-fade-up { animation: fadeUp 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0s); }
+.anim-fade-in { animation: fadeIn 0.9s ease both; animation-delay: var(--d, 0s); }
+.auth-panel { animation: panelIn 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.field-error { animation: fadeUp 0.25s ease both; }
+.shake { animation: shake 0.5s both; }
+.live-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: #fff;
+  animation: pulseDot 1.4s ease-in-out infinite;
+}
+.score-tick { animation: scoreTick 0.5s ease; }
+.pitch-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: drawLine 2.8s ease-out forwards;
+  animation-delay: var(--d, 0.2s);
+}
+.success-circle,
+.success-check { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.success-circle { animation: drawLine 0.6s ease forwards; }
+.success-check { animation: drawLine 0.4s ease 0.5s forwards; }
+
+.btn-lift { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.btn-lift:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0.4rem 0.9rem rgba(30, 10, 60, 0.18); }
+.btn-lift:active:not(:disabled) { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up, .anim-fade-in, .auth-panel, .field-error, .shake, .live-dot, .score-tick, .btn-lift {
+    animation: none !important;
+    transition: none !important;
+  }
+  .pitch-line, .success-circle, .success-check { animation: none; stroke-dashoffset: 0; }
+}
+
+/* ---------- Login ---------- */
 .login-scoreboard {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(4px);
 }
 
-.login-field {
-  border-radius: 0.6rem;
-  transition: box-shadow 0.15s ease;
-}
-.login-field:focus-within {
-  box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.28);
-}
+.login-field { border-radius: 0.6rem; transition: box-shadow 0.15s ease; }
+.login-field:focus-within { box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.28); }
 .login-field:focus-within .input-group-text,
 .login-field:focus-within .form-control,
-.login-field:focus-within .btn {
-  border-color: #F59E0B;
-}
-.login-field .form-control:focus {
-  box-shadow: none;
-}
+.login-field:focus-within .btn { border-color: #F59E0B; }
+.login-field .form-control:focus { box-shadow: none; }
 .login-field .input-group-text,
 .login-field .form-control,
-.login-field .btn {
-  border-color: #D5D9E0;
-}
+.login-field .btn { border-color: #D5D9E0; }
+.login-field.has-error .input-group-text,
+.login-field.has-error .form-control,
+.login-field.has-error .btn { border-color: #dc3545; }
+.login-field.has-error:focus-within { box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.2); }
 
+.auth-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  background: #F1F3F7;
+  border-radius: 0.75rem;
+}
+.auth-tabs-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  background: #fff;
+  border-radius: 0.6rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.auth-tabs[data-active='1'] .auth-tabs-indicator { transform: translateX(100%); }
+.auth-tab {
+  position: relative;
+  z-index: 1;
+  padding: 0.6rem 1rem;
+  border: 0;
+  background: transparent;
+  border-radius: 0.6rem;
+  font-weight: 600;
+  color: #6B7280;
+  transition: color 0.2s ease;
+}
+.auth-tab.active { color: #1E0A3C; }
+.auth-tab:focus-visible { outline: 2px solid #F59E0B; outline-offset: 1px; }
+
+.strength-track { height: 6px; background: #E9ECEF; border-radius: 999px; overflow: hidden; }
+.strength-bar { height: 100%; border-radius: 999px; transition: width 0.3s ease, background-color 0.3s ease; }
+
+.demo-details > summary { cursor: pointer; list-style: none; }
+.demo-details > summary::-webkit-details-marker { display: none; }
 .demo-account {
   border: 1px solid #E3E6EC;
   background: #fff;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
-.demo-account:hover {
-  border-color: #F59E0B;
-  background: #FFFBF2;
+.demo-account:hover { border-color: #F59E0B; background: #FFFBF2; }
+
+/* ---------- Exportar a PDF (imprimir la vista actual) ---------- */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+  main { padding: 0 !important; }
+  .card { box-shadow: none !important; border: 0 !important; }
 }
