@@ -8,10 +8,18 @@ export default function Usuarios() {
   const [search, setSearch] = useState('');
 
   const query = search.trim().toLowerCase();
-  const visible = accounts.filter((a) => !query || a.name.toLowerCase().includes(query) || a.email.toLowerCase().includes(query));
+  
+  // PROTECCIÓN 1: Validar que las propiedades existan antes de usar toLowerCase
+  const visible = accounts.filter((a) => 
+    !query || 
+    (a.name && a.name.toLowerCase().includes(query)) || 
+    (a.email && a.email.toLowerCase().includes(query))
+  );
 
   const handleRemove = (account) => {
-    if (window.confirm(`¿Eliminar la cuenta de ${account.name}? Esta acción no se puede deshacer.`)) removeAccount(account.id);
+    if (window.confirm(`¿Eliminar la cuenta de ${account.name}? Esta acción no se puede deshacer.`)) {
+      removeAccount(account.id);
+    }
   };
 
   return (
@@ -33,9 +41,21 @@ export default function Usuarios() {
             <tr><th>Usuario</th><th>Rol</th><th className="text-center">Estado</th><th className="text-end">Acciones</th></tr>
           </thead>
           <tbody>
-            {visible.length === 0 && <tr><td colSpan={4} className="text-center text-muted py-5">No hay usuarios que coincidan.</td></tr>}
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={4} className="text-center text-muted py-5">
+                  {accounts.length === 0 ? "Cargando usuarios o no hay usuarios registrados..." : "No hay usuarios que coincidan con la búsqueda."}
+                </td>
+              </tr>
+            )}
+            
             {visible.map((a) => {
-              const isSelf = a.id === user.id;
+              // PROTECCIÓN 2: Usar user?.id por si user es nulo al cargar
+              const isSelf = a.id === user?.id; 
+              
+              // PROTECCIÓN 3: Normalizar el rol para evitar errores de mayúsculas
+              const currentRole = a.role ? a.role.toLowerCase() : '';
+
               return (
                 <tr key={a.id}>
                   <td>
@@ -43,16 +63,42 @@ export default function Usuarios() {
                     <span className="small text-muted">{a.email}</span>
                   </td>
                   <td>
-                    <select className="form-select form-select-sm" style={{ minWidth: '150px' }} aria-label={`Rol de ${a.name}`} value={a.role} disabled={isSelf} onChange={(e) => setAccountRole(a.id, e.target.value)}>
-                      {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                    <select 
+                      className="form-select form-select-sm" 
+                      style={{ minWidth: '150px' }} 
+                      aria-label={`Rol de ${a.name}`} 
+                      value={currentRole} 
+                      disabled={isSelf} 
+                      onChange={(e) => setAccountRole(a.id, e.target.value)}
+                    >
+                      {ASSIGNABLE_ROLES.map((r) => {
+                        // Si los roles en data/users.js están en mayúsculas, los pasamos a minúscula aquí
+                        const roleValue = r.toLowerCase(); 
+                        return <option key={r} value={roleValue}>{ROLE_LABELS[r] || r}</option>
+                      })}
                     </select>
                   </td>
-                  <td className="text-center"><span className={`badge rounded-pill px-3 py-1 ${a.status === 'activo' ? 'bg-success' : 'bg-danger'}`}>{a.status === 'activo' ? 'Activo' : 'Bloqueado'}</span></td>
+                  <td className="text-center">
+                    <span className={`badge rounded-pill px-3 py-1 ${a.status === 'activo' ? 'bg-success' : 'bg-danger'}`}>
+                      {a.status === 'activo' ? 'Activo' : 'Bloqueado'}
+                    </span>
+                  </td>
                   <td className="text-end text-nowrap">
-                    <button type="button" className="btn btn-sm btn-outline-dark me-2" disabled={isSelf} onClick={() => setAccountStatus(a.id, a.status === 'activo' ? 'bloqueado' : 'activo')}>
+                    <button 
+                      type="button" 
+                      className="btn btn-sm btn-outline-dark me-2" 
+                      disabled={isSelf} 
+                      onClick={() => setAccountStatus(a.id, a.status === 'activo' ? 'bloqueado' : 'activo')}
+                    >
                       {a.status === 'activo' ? 'Bloquear' : 'Habilitar'}
                     </button>
-                    <button type="button" className="btn btn-sm btn-outline-danger" disabled={isSelf} onClick={() => handleRemove(a)} aria-label={`Eliminar a ${a.name}`}>
+                    <button 
+                      type="button" 
+                      className="btn btn-sm btn-outline-danger" 
+                      disabled={isSelf} 
+                      onClick={() => handleRemove(a)} 
+                      aria-label={`Eliminar a ${a.name}`}
+                    >
                       <Trash2 size={14} />
                     </button>
                   </td>
