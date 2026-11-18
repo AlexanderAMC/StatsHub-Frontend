@@ -7,7 +7,7 @@ import { MATCH_STATUS } from '../data/constants';
 import { useData } from '../hooks/useData';
 
 export default function Layout() {
-  const { matches } = useData();
+  const { matches, cargando, error, reload } = useData();
   const [showProfile, setShowProfile] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
@@ -20,6 +20,19 @@ export default function Layout() {
       <div className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
         <Header liveCount={liveCount} onOpenMenu={() => setShowMenu(true)} onOpenProfile={() => setShowProfile(true)} />
         <main className="p-3 p-md-4 flex-grow-1">
+          {error && (
+            <div className="alert alert-danger d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert">
+              <span>No se pudieron cargar los datos de la liga: {error}</span>
+              <button type="button" className="btn btn-sm btn-outline-danger" onClick={reload} disabled={cargando}>
+                {cargando ? 'Reintentando…' : 'Reintentar'}
+              </button>
+            </div>
+          )}
+          {cargando && !error && (
+            <div className="d-flex align-items-center gap-2 text-muted small mb-3" role="status">
+              <span className="spinner-border spinner-border-sm" aria-hidden="true" /> Cargando datos de la liga…
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

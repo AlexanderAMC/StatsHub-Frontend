@@ -1,96 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DataContext } from './dataContext';
-import { MATCH_STATUS } from '../data/constants';
 import { deportivosService } from '../services/deportivos.service';
 import { REFEREES, VENUES } from '../data/mockData'; // Solo para datos que faltan en BD
-
-// Estados de la BD (CHECK en StatsHub-Database/schemas/02_deportivo.sql) → etiquetas de la UI.
-const TOURNAMENT_STATUS_MAP = {
-  PLANIFICADO: 'Planificado',
-  ACTIVO: 'En Curso',
-  FINALIZADO: 'Finalizado',
-};
-
-const MATCH_STATUS_MAP = {
-  PROGRAMADO: MATCH_STATUS.SCHEDULED,
-  EN_CURSO: MATCH_STATUS.LIVE,
-  FINALIZADO: MATCH_STATUS.FINISHED,
-  SUSPENDIDO: MATCH_STATUS.SUSPENDED,
-};
+import { mapMatch, mapTeam, mapTournament } from '../utils/mappers';
 
 export default function DataProvider({ children }) {
   const [tournaments, setTournaments] = useState([]);
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+  // Incrementarlo vuelve a disparar la carga (botón "Reintentar").
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const cargarDatos = async () => {
       setCargando(true);
+      setError('');
       try {
         const [torneosDb, equiposDb, partidosDb] = await Promise.all([
           deportivosService.getTorneos(),
           deportivosService.getEquipos(),
-          deportivosService.getPartidos()
+          deportivosService.getPartidos(),
         ]);
-
-        // Adaptar Torneos
-        setTournaments(torneosDb.map(t => ({
-          id: t.id,
-          name: t.nombre,
-          category: t.categoria,
-          categoryId: t.categoria_id,
-          status: TOURNAMENT_STATUS_MAP[t.estado] ?? t.estado,
-          teams: t.cantidad_equipos ?? 0,
-          startDate: t.fecha_inicio,
-          endDate: t.fecha_fin,
-          season: t.fecha_inicio?.slice(0, 4) || '2026'
-        })));
-
-        // Adaptar Equipos
-        setTeams(equiposDb.map(e => ({
-          id: e.id,
-          name: e.nombre,
-          tournamentId: e.torneo_id ?? null,
-          tournamentIds: e.torneo_ids ?? [],
-          coach: 'Sin asignar'
-        })));
-
-        // Adaptar Partidos (los ids vienen del backend; antes llegaban undefined y todo era "Equipo Desconocido")
-        setMatches(partidosDb.map(p => ({
-          id: p.id,
-          homeId: p.equipo_local,
-          awayId: p.equipo_visita,
-          scoreHome: p.goles_local ?? 0,
-          scoreAway: p.goles_visita ?? 0,
-          status: MATCH_STATUS_MAP[p.estado] ?? MATCH_STATUS.SCHEDULED,
-          date: p.fecha_partido?.split('T')[0] || '',
-          time: p.fecha_partido?.split('T')[1]?.slice(0, 5) || '',
-          venue: p.cancha || 'Cancha 1',
-          tournamentId: p.torneo_id,
-          refereeId: null,
-          round: 1,
-          minute: 0
-        })));
-
-      } catch (error) {
-        console.error('Error al cargar datos:', error);
+        if (cancelled) return;
+        setTournaments(torneosDb.map(mapTournament));
+        setTeams(equiposDb.map(mapTeam));
+        setMatches(partidosDb.map(mapMatch));
+      } catch (err) {
+        if (cancelled) return;
+        console.error('Error al cargar datos:', err);
+        setError(err.message || 'No se pudieron cargar los datos.');
       } finally {
-        setCargando(false);
+        if (!cancelled) setCargando(false);
       }
     };
 
     cargarDatos();
-  }, []);
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   const notImplemented = () => { console.warn('En desarrollo'); return { ok: false, error: 'En desarrollo' }; };
 
   const value = {
-    tournaments, teams, matches, cargando,
+    tournaments, teams, matches, cargando, error, reload,
     players: [], events: [], notifications: [], transfers: [], categories: [],
     referees: REFEREES, venues: VENUES,
-    teamName: (id) => teams.find(t => t.id === id)?.name || 'Equipo Desconocido',
-    playerName: (id) => 'Jugador',
+    teamName: (id) => teams.find((t) => t.id === id)?.name || 'Equipo Desconocido',
+    playerName: () => 'Jugador',
     markAllRead: () => {},
     addTournament: notImplemented, updateTournament: notImplemented, removeTournament: notImplemented,
     addCategory: notImplemented, removeCategory: notImplemented,

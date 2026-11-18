@@ -156,7 +156,7 @@ function PasswordStrength({ password }) {
 }
 
 function LoginForm({ onRecover }) {
-  const { login } = useAuth();
+  const { login, sessionNotice } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -200,6 +200,7 @@ function LoginForm({ onRecover }) {
 
         <div role="alert" aria-live="polite">
           {error && <div className="alert alert-danger field-error py-2 small mb-3">{error}</div>}
+          {!error && sessionNotice && <div className="alert alert-warning py-2 small mb-3">{sessionNotice}</div>}
         </div>
 
         <div className="d-flex justify-content-end mb-1">
