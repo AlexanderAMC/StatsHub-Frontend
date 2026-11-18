@@ -59,18 +59,7 @@ export const ROLE_ABILITIES = {
   invitado: [VIEW],
 };
 
-// Cuentas de demostración. Cuando exista el backend, el login se valida en el servidor
-// (contraseñas con hash y token JWT) y esta lista desaparece.
-export const USERS = [
-  { id: 'admin', name: 'Juan Villagran', initials: 'JV', email: 'admin@statshub.cl', password: 'admin123', role: ROLES.ADMIN, status: 'activo', teamId: null },
-  { id: 'organizador', name: 'Organizador de prueba', initials: 'OP', email: 'organizador@statshub.cl', password: 'organizador123', role: ROLES.ORGANIZER, status: 'activo', teamId: null },
-  { id: 'entrenador', name: 'Entrenador de prueba', initials: 'EP', email: 'entrenador@statshub.cl', password: 'entrenador123', role: ROLES.COACH, status: 'activo', teamId: 1 },
-  { id: 'arbitro', name: 'Árbitro de prueba', initials: 'AP', email: 'arbitro@statshub.cl', password: 'arbitro123', role: ROLES.REFEREE, status: 'activo', teamId: null },
-  { id: 'estadigrafo', name: 'Estadígrafo de prueba', initials: 'ES', email: 'estadigrafo@statshub.cl', password: 'stats123', role: ROLES.STATS, status: 'activo', teamId: null },
-  { id: 'jugador', name: 'Jugador de prueba', initials: 'JP', email: 'jugador@statshub.cl', password: 'jugador123', role: ROLES.PLAYER, status: 'activo', teamId: null },
-  { id: 'espectador', name: 'Espectador de prueba', initials: 'EP', email: 'espectador@statshub.cl', password: 'espectador123', role: ROLES.SPECTATOR, status: 'activo', teamId: null },
-];
-
+// El login se valida en el servidor (contraseñas con hash y token JWT): no hay cuentas en el cliente.
 export const GUEST_USER = { id: 'invitado', name: 'Invitado', initials: 'IN', email: '', role: ROLES.GUEST, status: 'activo', teamId: null };
 
 // Nunca se guarda la contraseña en el estado de la sesión.

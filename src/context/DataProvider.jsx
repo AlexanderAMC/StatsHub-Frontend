@@ -4,6 +4,20 @@ import { MATCH_STATUS } from '../data/constants';
 import { deportivosService } from '../services/deportivos.service';
 import { REFEREES, VENUES } from '../data/mockData'; // Solo para datos que faltan en BD
 
+// Estados de la BD (CHECK en StatsHub-Database/schemas/02_deportivo.sql) → etiquetas de la UI.
+const TOURNAMENT_STATUS_MAP = {
+  PLANIFICADO: 'Planificado',
+  ACTIVO: 'En Curso',
+  FINALIZADO: 'Finalizado',
+};
+
+const MATCH_STATUS_MAP = {
+  PROGRAMADO: MATCH_STATUS.SCHEDULED,
+  EN_CURSO: MATCH_STATUS.LIVE,
+  FINALIZADO: MATCH_STATUS.FINISHED,
+  SUSPENDIDO: MATCH_STATUS.SUSPENDED,
+};
+
 export default function DataProvider({ children }) {
   const [tournaments, setTournaments] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -25,8 +39,9 @@ export default function DataProvider({ children }) {
           id: t.id,
           name: t.nombre,
           category: t.categoria,
-          status: t.estado === 'ACTIVO' ? 'En Curso' : t.estado === 'PLANIFICADO' ? 'Planificado' : 'Finalizado',
-          teams: 0, 
+          categoryId: t.categoria_id,
+          status: TOURNAMENT_STATUS_MAP[t.estado] ?? t.estado,
+          teams: t.cantidad_equipos ?? 0,
           startDate: t.fecha_inicio,
           endDate: t.fecha_fin,
           season: t.fecha_inicio?.slice(0, 4) || '2026'
@@ -36,22 +51,23 @@ export default function DataProvider({ children }) {
         setTeams(equiposDb.map(e => ({
           id: e.id,
           name: e.nombre,
-          tournamentId: 1, // TODO: El backend debe devolver el torneo_id
+          tournamentId: e.torneo_id ?? null,
+          tournamentIds: e.torneo_ids ?? [],
           coach: 'Sin asignar'
         })));
 
-        // Adaptar Partidos
+        // Adaptar Partidos (los ids vienen del backend; antes llegaban undefined y todo era "Equipo Desconocido")
         setMatches(partidosDb.map(p => ({
           id: p.id,
           homeId: p.equipo_local,
           awayId: p.equipo_visita,
-          scoreHome: p.goles_local || 0,
-          scoreAway: p.goles_visita || 0,
-          status: p.estado === 'FINALIZADO' ? MATCH_STATUS.FINISHED : p.estado === 'EN_CURSO' ? MATCH_STATUS.LIVE : MATCH_STATUS.SCHEDULED,
+          scoreHome: p.goles_local ?? 0,
+          scoreAway: p.goles_visita ?? 0,
+          status: MATCH_STATUS_MAP[p.estado] ?? MATCH_STATUS.SCHEDULED,
           date: p.fecha_partido?.split('T')[0] || '',
           time: p.fecha_partido?.split('T')[1]?.slice(0, 5) || '',
           venue: p.cancha || 'Cancha 1',
-          tournamentId: 1, // TODO: El backend debe devolver el torneo_id
+          tournamentId: p.torneo_id,
           refereeId: null,
           round: 1,
           minute: 0

@@ -2,12 +2,14 @@ export const MATCH_STATUS = {
   SCHEDULED: 'Programado',
   LIVE: 'En Vivo',
   FINISHED: 'Finalizado',
+  SUSPENDED: 'Suspendido',
 };
 
 export const MATCH_BADGE = {
   Programado: 'bg-secondary',
   'En Vivo': 'bg-danger',
   Finalizado: 'bg-dark',
+  Suspendido: 'bg-warning text-dark',
 };
 
 export const MAX_MINUTE = 130;

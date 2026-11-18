@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'; // <-- 1. Agregamos useEffect
 import { AuthContext } from './authContext';
-import { GUEST_USER, ROLES, ROLE_PERMISSIONS } from '../data/users';
+import { GUEST_USER, PERMISSIONS, ROLES, ROLE_PERMISSIONS } from '../data/users';
 import { authService } from '../services/auth.service';
 import { fetchApi } from '../services/api'; // <-- 2. Importamos fetchApi
 
@@ -32,12 +32,15 @@ export default function AuthProvider({ children }) {
   // 3. NUEVO ESTADO para guardar los usuarios de la BD
   const [accounts, setAccounts] = useState([]); 
 
-  // 4. NUEVO useEffect para buscar los usuarios al cargar la app
+  // La lista de usuarios solo la puede pedir un administrador (el backend responde 401/403 al resto).
+  // Antes se pedía con cualquier sesión, incluida la de invitado.
+  const canManageUsers = Boolean(user) && (ROLE_PERMISSIONS[user.role] || []).includes(PERMISSIONS.MANAGE_USERS);
+  const userId = user?.id;
+
   useEffect(() => {
     const cargarUsuarios = async () => {
-      // Solo intentamos cargar si hay un usuario logueado (para no dar error 401)
-      if (!user) return; 
-      
+      if (!canManageUsers) return;
+
       try {
         const data = await fetchApi('/auth/users');
         
@@ -56,7 +59,7 @@ export default function AuthProvider({ children }) {
     };
 
     cargarUsuarios();
-  }, [user]); // Se ejecuta cuando el usuario inicia sesión
+  }, [userId, canManageUsers]); // Se ejecuta cuando cambia el usuario con sesión
 
   const startSession = (nextUser, token) => {
     setUser(nextUser);
@@ -93,14 +96,22 @@ export default function AuthProvider({ children }) {
       const apellido = parts.slice(1).join(' ') || 'Sin apellido';
 
       await authService.register(nombre, apellido, email, password);
-      return await login(email, password);
     } catch (error) {
       return { ok: false, error: error.message };
     }
+
+    const result = await login(email, password);
+    if (!result.ok) {
+      return { ok: false, error: 'La cuenta se creó, pero no se pudo iniciar sesión. Intenta entrar con tus datos.' };
+    }
+    return result;
   };
 
   const loginAsGuest = () => startSession(GUEST_USER, null);
-  const logout = () => startSession(null, null);
+  const logout = () => {
+    setAccounts([]);
+    startSession(null, null);
+  };
 
   const can = (permission) => {
     if (!user || user.role === ROLES.GUEST) return false;

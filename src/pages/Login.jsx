@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, BarChart2, Check, ChevronDown, Circle, Eye, EyeOff, FileText, Lock, Mail, Radio, User,
+  ArrowLeft, ArrowRight, BarChart2, Check, Circle, Eye, EyeOff, FileText, Lock, Mail, Radio, User,
 } from 'lucide-react';
 import logoStatsHub from '../assets/logo.jpg';
 import { LOGIN_PREVIEW } from '../data/mockData';
-import { ROLE_LABELS, USERS } from '../data/users';
 import { useAuth } from '../hooks/useAuth';
 
 const BRAND = '#1E0A3C';
@@ -158,7 +157,6 @@ function PasswordStrength({ password }) {
 
 function LoginForm({ onRecover }) {
   const { login } = useAuth();
-  const later = useDelayed();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -172,7 +170,7 @@ function LoginForm({ onRecover }) {
     setBusy(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim() || !password) {
       fail('Ingresa tu correo y tu contraseña.');
@@ -180,16 +178,10 @@ function LoginForm({ onRecover }) {
     }
     setError('');
     setBusy(true);
-    later(() => {
-      const result = login(email, password);
-      if (!result.ok) fail(result.error);
-    }, 650);
-  };
-
-  const fillDemo = (account) => {
-    setEmail(account.email);
-    setPassword(account.password);
-    setError('');
+    // login es async: hay que esperar el resultado para mostrar el error real del servidor.
+    // Si va bien, la sesión cambia y <Login> redirige, así que no hace falta hacer nada más.
+    const result = await login(email.trim(), password);
+    if (!result.ok) fail(result.error || 'No se pudo iniciar sesión.');
   };
 
   return (
@@ -220,30 +212,12 @@ function LoginForm({ onRecover }) {
           Iniciar sesión <ArrowRight size={18} aria-hidden="true" />
         </SubmitButton>
       </form>
-
-      <details className="demo-details mt-4">
-        <summary className="small fw-semibold text-dark d-flex align-items-center justify-content-between">
-          Cuentas de demostración <ChevronDown size={16} aria-hidden="true" />
-        </summary>
-        <div className="row g-2 mt-1">
-          {USERS.map((account) => (
-            <div key={account.id} className="col-12 col-sm-6">
-              <button type="button" className="demo-account w-100 text-start rounded-3 p-2 px-3" onClick={() => fillDemo(account)}>
-                <span className="d-block small fw-semibold text-dark">{ROLE_LABELS[account.role]}</span>
-                <span className="d-block small text-muted text-truncate">{account.email}</span>
-              </button>
-            </div>
-          ))}
-        </div>
-        <p className="small text-muted mt-2 mb-0">Toca una cuenta para completar los datos. Solo para la demostración del proyecto.</p>
-      </details>
     </>
   );
 }
 
 function RegisterForm() {
-  const { accounts, register } = useAuth();
-  const later = useDelayed();
+  const { register } = useAuth();
   const [values, setValues] = useState({ name: '', email: '', password: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [attempted, setAttempted] = useState(false);
@@ -267,7 +241,7 @@ function RegisterForm() {
 
   const errors = attempted ? { ...validate(), ...(serverError ? { email: serverError } : {}) } : {};
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setAttempted(true);
     const found = validate();
@@ -275,16 +249,17 @@ function RegisterForm() {
       setShake(true);
       return;
     }
-    if (accounts.some((a) => a.email === values.email.trim().toLowerCase())) {
-      setServerError('Ya existe una cuenta con ese correo.');
+    setServerError('');
+    setStatus('loading');
+    // El servidor es quien sabe si el correo ya existe (409): solo se anuncia éxito si responde bien.
+    const result = await register(values);
+    if (!result.ok) {
+      setStatus('idle');
+      setServerError(result.error || 'No se pudo crear la cuenta.');
       setShake(true);
       return;
     }
-    setStatus('loading');
-    later(() => {
-      setStatus('success');
-      later(() => register(values), 1400);
-    }, 700);
+    setStatus('success');
   };
 
   if (status === 'success') {
