@@ -38,10 +38,28 @@ describe('Login', () => {
     await user.type(screen.getByLabelText('Correo'), 'carla@statshub.cl');
     await user.type(screen.getByLabelText('Contraseña'), 'ClaveSegura1');
     await user.type(screen.getByLabelText('Confirmar contraseña'), 'ClaveSegura1');
+    await user.click(screen.getByLabelText(/Acepto la política de privacidad/));
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }));
 
     expect(await screen.findByText('El correo ya está registrado')).toBeInTheDocument();
     expect(screen.queryByText('¡Cuenta creada!')).not.toBeInTheDocument();
+  });
+
+  it('sin aceptar la política de privacidad no se envía el registro (Ley 19.628)', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const user = userEvent.setup({ delay: null });
+    renderLogin();
+
+    await user.click(screen.getByRole('tab', { name: 'Crear cuenta' }));
+    await user.type(screen.getByLabelText('Nombre completo'), 'Carla Rojas');
+    await user.type(screen.getByLabelText('Correo'), 'carla@statshub.cl');
+    await user.type(screen.getByLabelText('Contraseña'), 'ClaveSegura1');
+    await user.type(screen.getByLabelText('Confirmar contraseña'), 'ClaveSegura1');
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }));
+
+    expect(await screen.findByText(/Debes aceptar la política de privacidad/)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('ya no muestra cuentas de demostración con contraseñas', () => {

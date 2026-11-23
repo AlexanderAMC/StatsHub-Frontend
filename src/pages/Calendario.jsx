@@ -24,7 +24,7 @@ const pct = (p) => `${Math.round(p * 100)}%`;
 
 export default function Calendario() {
   const {
-    tournaments, teams, players, matches, referees, venues, teamName,
+    tournaments, teams, players, matches, referees, statsKeepers, venues, predictions, teamName,
     scheduleMatch, updateScheduledMatch, cancelMatch, sendReminder, generateFixture, startMatch,
   } = useData();
   const { can } = useAuth();
@@ -60,23 +60,33 @@ export default function Calendario() {
     else groups.push({ date: m.date, items: [m] });
   });
 
+  // RF-37: predicción del servidor (modelo de Machine Learning). Si no está disponible, cálculo local.
   const predictionFor = (m) => {
+    if (predictions[m.id]) return predictions[m.id];
     const finished = matches.filter((x) => x.tournamentId === m.tournamentId && x.status === FINISHED);
     return predictMatch(m.homeId, m.awayId, finished);
   };
 
-  const handleSaveMatch = (data) => {
-    if (matchModal.match) updateScheduledMatch(matchModal.match.id, data);
-    else scheduleMatch(data);
-    setMatchModal(null);
+  const handleSaveMatch = async (data) => {
+    const result = matchModal.match ? await updateScheduledMatch(matchModal.match.id, data) : await scheduleMatch(data);
+    if (result.ok) setMatchModal(null);
+    else window.alert(result.error);
   };
 
-  const handleCancel = (m) => {
-    if (window.confirm(`¿Suspender el partido ${teamName(m.homeId)} vs ${teamName(m.awayId)}? Se avisará por notificación.`)) cancelMatch(m.id);
+  const handleCancel = async (m) => {
+    if (!window.confirm(`¿Suspender el partido ${teamName(m.homeId)} vs ${teamName(m.awayId)}? Se avisará por notificación.`)) return;
+    const result = await cancelMatch(m.id);
+    if (!result.ok) window.alert(result.error);
   };
 
-  const handleStart = (matchId, lineup) => {
-    startMatch(matchId, lineup);
+  const handleReminder = async (m) => {
+    const result = await sendReminder(m.id);
+    window.alert(result.ok ? 'Recordatorio enviado a la liga.' : result.error);
+  };
+
+  const handleStart = async (matchId, lineup) => {
+    const result = await startMatch(matchId, lineup);
+    if (!result.ok) return window.alert(result.error);
     setStarting(null);
     navigate(`/actas?partido=${matchId}`);
   };
@@ -160,7 +170,7 @@ export default function Calendario() {
                               <button type="button" className="btn btn-sm btn-outline-dark" onClick={guard(canSchedule, () => setMatchModal({ match: m }), 'editar partidos')} aria-label="Editar partido">
                                 {canSchedule ? <Pencil size={14} /> : <Lock size={14} />}
                               </button>
-                              <button type="button" className="btn btn-sm btn-outline-dark" onClick={guard(canSchedule, () => sendReminder(m.id), 'enviar recordatorios')} aria-label="Enviar recordatorio">
+                              <button type="button" className="btn btn-sm btn-outline-dark" onClick={guard(canSchedule, () => handleReminder(m), 'enviar recordatorios')} aria-label="Enviar recordatorio">
                                 {canSchedule ? <Bell size={14} /> : <Lock size={14} />}
                               </button>
                               <button type="button" className="btn btn-sm btn-outline-danger" onClick={guard(canSchedule, () => handleCancel(m), 'suspender partidos')} aria-label="Suspender partido">
@@ -191,7 +201,7 @@ export default function Calendario() {
 
       {restricted && <RestrictedActionModal show onHide={() => setRestricted('')} action={restricted} />}
       {matchModal && (
-        <MatchFormModal
+        <MatchFormModal statsKeepers={statsKeepers}
           key={matchModal.match?.id ?? 'nuevo'}
           match={matchModal.match}
           tournaments={tournaments}

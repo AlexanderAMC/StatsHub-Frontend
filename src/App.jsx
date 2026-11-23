@@ -5,6 +5,10 @@ import AuthProvider from './context/AuthProvider';
 import DataProvider from './context/DataProvider';
 import { PERMISSIONS } from './data/users';
 import Actas from './pages/Actas';
+import Auditoria from './pages/Auditoria';
+import Comprobante from './pages/Comprobante';
+import Pagos from './pages/Pagos';
+import Restablecer from './pages/Restablecer';
 import Calendario from './pages/Calendario';
 import Dashboard from './pages/Dashboard';
 import EquipoDetalle from './pages/EquipoDetalle';
@@ -22,6 +26,7 @@ export default function App() {
         <DataProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/restablecer" element={<Restablecer />} />
 
             <Route
               element={
@@ -50,6 +55,25 @@ export default function App() {
                 element={
                   <RequirePermission permission={PERMISSIONS.MANAGE_USERS} feature="administrar usuarios y roles">
                     <Usuarios />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="pagos"
+                element={
+                  <RequirePermission permission={PERMISSIONS.MANAGE_TEAMS} feature="ver los pagos de inscripción">
+                    <Pagos />
+                  </RequirePermission>
+                }
+              />
+              {/* El resultado de Flow y el comprobante: el backend valida que el usuario pueda verlo. */}
+              <Route path="pagos/resultado" element={<Comprobante />} />
+              <Route path="pagos/:id" element={<Comprobante />} />
+              <Route
+                path="auditoria"
+                element={
+                  <RequirePermission permission={PERMISSIONS.MANAGE_USERS} feature="revisar la bitácora de auditoría">
+                    <Auditoria />
                   </RequirePermission>
                 }
               />

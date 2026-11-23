@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Search, Trash2 } from 'lucide-react';
+import { Pencil, Search, Trash2, UserPlus } from 'lucide-react';
+import UserFormModal from '../components/UserFormModal';
 import { ASSIGNABLE_ROLES, ROLE_LABELS } from '../data/users';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Usuarios() {
-  const { user, accounts, setAccountStatus, setAccountRole, removeAccount } = useAuth();
+  const { user, accounts, setAccountStatus, setAccountRole, removeAccount, createAccount, updateAccount } = useAuth();
   const [search, setSearch] = useState('');
+  const [editing, setEditing] = useState(null); // { account } · account null = crear
 
   const query = search.trim().toLowerCase();
   
@@ -29,9 +31,14 @@ export default function Usuarios() {
           <h2 className="h4 fw-bold m-0" style={{ color: '#1E0A3C' }}>Usuarios y roles</h2>
           <p className="text-muted small mb-0">Asigna roles, bloquea o elimina cuentas. {accounts.length} cuentas registradas.</p>
         </div>
+        <div className="d-flex flex-wrap gap-2">
+        <button type="button" className="btn btn-sm text-white fw-bold d-flex align-items-center gap-1" style={{ backgroundColor: '#1E0A3C' }} onClick={() => setEditing({ account: null })}>
+          <UserPlus size={16} /> Nuevo usuario
+        </button>
         <div className="input-group input-group-sm" style={{ maxWidth: '280px' }}>
           <span className="input-group-text bg-light border-0"><Search size={16} className="text-muted" /></span>
           <input type="search" className="form-control border-0 bg-light" placeholder="Buscar por nombre o correo" aria-label="Buscar usuarios" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
         </div>
       </div>
 
@@ -84,10 +91,13 @@ export default function Usuarios() {
                     </span>
                   </td>
                   <td className="text-end text-nowrap">
-                    <button 
-                      type="button" 
-                      className="btn btn-sm btn-outline-dark me-2" 
-                      disabled={isSelf} 
+                    <button type="button" className="btn btn-sm btn-outline-dark me-2" onClick={() => setEditing({ account: a })} aria-label={`Editar a ${a.name}`}>
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-dark me-2"
+                      disabled={isSelf}
                       onClick={() => setAccountStatus(a.id, a.status === 'activo' ? 'bloqueado' : 'activo')}
                     >
                       {a.status === 'activo' ? 'Bloquear' : 'Habilitar'}
@@ -108,6 +118,18 @@ export default function Usuarios() {
           </tbody>
         </table>
       </div>
+
+      {editing && (
+        <UserFormModal
+          account={editing.account}
+          onHide={() => setEditing(null)}
+          onSave={async (data) => {
+            const result = editing.account ? await updateAccount(editing.account.id, data) : await createAccount(data);
+            if (result.ok) setEditing(null);
+            return result;
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowLeftRight, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, CreditCard, ImageUp, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
+import TeamLogo, { RegistrationBadge } from '../components/TeamLogo';
 import ExportButtons from '../components/ExportButtons';
 import PlayerModal from '../components/PlayerModal';
 import RestrictedActionModal from '../components/RestrictedActionModal';
@@ -18,8 +19,13 @@ const FORM_BADGE = { G: 'bg-success', E: 'bg-secondary', P: 'bg-danger' };
 
 export default function EquipoDetalle() {
   const { teamId } = useParams();
-  const { tournaments, teams, players, matches, events, addPlayer, updatePlayer, removePlayer, transferPlayer, updateTeam, teamName } = useData();
+  const {
+    tournaments, teams, players, matches, events, addPlayer, updatePlayer, removePlayer, transferPlayer, updateTeam,
+    uploadTeamLogo, requestPayment, teamName,
+  } = useData();
   const { can, canManagePlayers } = useAuth();
+  const [uploading, setUploading] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   const [playerModal, setPlayerModal] = useState(null); // { player } · player null = nuevo
   const [transferring, setTransferring] = useState(null);
@@ -53,16 +59,40 @@ export default function EquipoDetalle() {
 
   const guard = (allowed, action, text) => () => (allowed ? action() : setRestricted(text));
 
-  const handleSavePlayer = (data) => {
-    if (playerModal.player) updatePlayer(playerModal.player.id, data);
-    else addPlayer({ ...data, teamId: id });
-    setPlayerModal(null);
+  const handleSavePlayer = async (data) => {
+    const result = playerModal.player ? await updatePlayer(playerModal.player.id, data) : await addPlayer({ ...data, teamId: id });
+    if (result.ok) setPlayerModal(null);
+    else window.alert(result.error);
   };
 
-  const handleRemovePlayer = (player) => {
+  const handleRemovePlayer = async (player) => {
     if (!window.confirm(`¿Eliminar a ${player.name} del plantel?`)) return;
-    const result = removePlayer(player.id);
+    const result = await removePlayer(player.id);
     if (!result.ok) window.alert(result.error);
+  };
+
+  // RF-13: el backend convierte el escudo a WebP 512x512.
+  const handleLogo = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) return window.alert('La imagen no puede superar 2 MB.');
+    setUploading(true);
+    const result = await uploadTeamLogo(id, file);
+    setUploading(false);
+    if (!result.ok) window.alert(result.error);
+  };
+
+  // RF-38 / RF-39: genera el cobro de inscripción y redirige a la pasarela Flow.
+  const handlePayment = async () => {
+    if (!tournament) return;
+    const fee = tournament.fee ? ` por $${Number(tournament.fee).toLocaleString('es-CL')}` : '';
+    if (!window.confirm(`¿Generar el cobro de inscripción de ${team.name} en ${tournament.name}${fee}? Serás redirigido a Flow para pagar.`)) return;
+    setPaying(true);
+    const result = await requestPayment(id, tournament.id);
+    setPaying(false);
+    if (result.ok) window.location.assign(result.data.url);
+    else window.alert(result.error);
   };
 
   const exportCsv = () =>
@@ -82,11 +112,28 @@ export default function EquipoDetalle() {
           <ArrowLeft size={14} /> Equipos
         </Link>
         <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
-          <div>
-            <h2 className="h3 fw-bold mb-1" style={{ color: '#1E0A3C' }}>{team.name}</h2>
-            <p className="text-muted mb-0">{tournament?.name ?? 'Sin torneo'}. Entrenador: {team.coach || 'sin asignar'}</p>
+          <div className="d-flex align-items-center gap-3">
+            <TeamLogo team={team} size={64} />
+            <div>
+              <h2 className="h3 fw-bold mb-1" style={{ color: '#1E0A3C' }}>{team.name}</h2>
+              <p className="text-muted mb-0 d-flex flex-wrap align-items-center gap-2">
+                {tournament?.name ?? 'Sin torneo'}. Entrenador: {team.coach || 'sin asignar'}
+                {team.registration && <RegistrationBadge status={team.registration} />}
+              </p>
+            </div>
           </div>
           <div className="d-flex flex-wrap gap-2 no-print">
+            {canEditTeam && (
+              <label className={`btn btn-outline-dark d-flex align-items-center gap-2 mb-0 ${uploading ? 'disabled' : ''}`}>
+                <ImageUp size={16} /> {uploading ? 'Subiendo…' : 'Subir escudo'}
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" className="d-none" onChange={handleLogo} disabled={uploading} />
+              </label>
+            )}
+            {canEditTeam && tournament && team.registration !== 'INSCRITO' && (
+              <button type="button" className="btn btn-success d-flex align-items-center gap-2" onClick={handlePayment} disabled={paying}>
+                <CreditCard size={16} /> {paying ? 'Generando…' : 'Generar cobro'}
+              </button>
+            )}
             <button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guard(canEditTeam, () => setTeamModal(true), 'editar equipos')}>
               {canEditTeam ? <Pencil size={16} /> : <Lock size={16} />} Editar equipo
             </button>
@@ -180,7 +227,7 @@ export default function EquipoDetalle() {
 
       {restricted && <RestrictedActionModal show onHide={() => setRestricted('')} action={restricted} />}
       {teamModal && (
-        <TeamModal team={team} tournaments={tournaments} teams={teams} onSave={(data) => { updateTeam(id, data); setTeamModal(false); }} onHide={() => setTeamModal(false)} />
+        <TeamModal team={team} tournaments={tournaments} teams={teams} onSave={async (data) => { const r = await updateTeam(id, data); if (r.ok) setTeamModal(false); else window.alert(r.error); }} onHide={() => setTeamModal(false)} />
       )}
       {playerModal && (
         <PlayerModal key={playerModal.player?.id ?? 'nuevo'} player={playerModal.player} teamPlayers={roster} onSave={handleSavePlayer} onHide={() => setPlayerModal(null)} />
@@ -190,7 +237,7 @@ export default function EquipoDetalle() {
           player={transferring}
           teams={teams}
           teamName={teamName}
-          onConfirm={(toTeamId) => { transferPlayer(transferring.id, toTeamId); setTransferring(null); }}
+          onConfirm={async (toTeamId) => { const r = await transferPlayer(transferring.id, toTeamId); if (r.ok) setTransferring(null); else window.alert(r.error); }}
           onHide={() => setTransferring(null)}
         />
       )}

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, Pencil, Plus, Search, Tags, Trash2 } from 'lucide-react';
+import { Building2, Lock, Pencil, Plus, Search, Tags, Trash2 } from 'lucide-react';
 import CategoriesModal from '../components/CategoriesModal';
+import LeagueModal from '../components/LeagueModal';
 import RestrictedActionModal from '../components/RestrictedActionModal';
 import TournamentModal from '../components/TournamentModal';
 import { STATUS_BADGE, TOURNAMENT_STATUSES } from '../data/constants';
@@ -20,6 +21,7 @@ export default function Torneos() {
   // null = cerrado · { tournament: null } = crear · { tournament } = editar
   const [modal, setModal] = useState(null);
   const [showCategories, setShowCategories] = useState(false);
+  const [showLeague, setShowLeague] = useState(false);
   const [showRestricted, setShowRestricted] = useState(false);
 
   const guarded = (action) => () => (canManage ? action() : setShowRestricted(true));
@@ -31,15 +33,15 @@ export default function Torneos() {
     return textOk && statusOk;
   });
 
-  const handleSave = (data) => {
-    if (modal.tournament) updateTournament(modal.tournament.id, data);
-    else addTournament(data);
-    setModal(null);
+  const handleSave = async (data) => {
+    const result = modal.tournament ? await updateTournament(modal.tournament.id, data) : await addTournament(data);
+    if (result.ok) setModal(null);
+    else window.alert(result.error);
   };
 
-  const handleDelete = (tournament) => {
+  const handleDelete = async (tournament) => {
     if (!window.confirm(`¿Eliminar el torneo "${tournament.name}"?`)) return;
-    const result = removeTournament(tournament.id);
+    const result = await removeTournament(tournament.id);
     if (!result.ok) window.alert(result.error);
   };
 
@@ -51,6 +53,9 @@ export default function Torneos() {
           <p className="text-muted small mb-0">Administra las ligas, categorías, fechas y su estado.</p>
         </div>
         <div className="d-flex flex-wrap gap-2">
+          <button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guarded(() => setShowLeague(true))}>
+            {canManage ? <Building2 size={18} /> : <Lock size={18} />} Datos de la liga
+          </button>
           <button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guarded(() => setShowCategories(true))}>
             {canManage ? <Tags size={18} /> : <Lock size={18} />} Categorías
           </button>
@@ -123,6 +128,7 @@ export default function Torneos() {
 
       {showRestricted && <RestrictedActionModal show onHide={() => setShowRestricted(false)} action="crear, editar o eliminar torneos" />}
       {showCategories && <CategoriesModal onHide={() => setShowCategories(false)} />}
+      {showLeague && <LeagueModal onHide={() => setShowLeague(false)} />}
       {modal && (
         <TournamentModal
           key={modal.tournament?.id ?? 'nuevo'}

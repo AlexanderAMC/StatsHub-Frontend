@@ -4,7 +4,7 @@ import FormModal, { Field } from './FormModal';
 import { scheduleConflict } from '../utils/schedule';
 
 // Programa un partido nuevo o edita uno programado (el torneo no se cambia al editar).
-export default function MatchFormModal({ match, tournaments, teams, matches, referees, venues, defaultTournamentId, onSave, onHide }) {
+export default function MatchFormModal({ match, tournaments, teams, matches, referees, statsKeepers = [], venues, defaultTournamentId, onSave, onHide }) {
   const isEditing = Boolean(match);
   const [values, setValues] = useState({
     tournamentId: String(match?.tournamentId ?? defaultTournamentId ?? tournaments[0]?.id ?? ''),
@@ -15,6 +15,7 @@ export default function MatchFormModal({ match, tournaments, teams, matches, ref
     time: match?.time ?? '15:00',
     venue: match?.venue ?? venues[0],
     refereeId: match?.refereeId ? String(match.refereeId) : '',
+    statsKeeperId: match?.statsKeeperId ?? '',
   });
   const [errors, setErrors] = useState({});
 
@@ -27,7 +28,7 @@ export default function MatchFormModal({ match, tournaments, teams, matches, ref
     const found = {};
     const homeId = Number(values.homeId);
     const awayId = Number(values.awayId);
-    const refereeId = values.refereeId ? Number(values.refereeId) : null;
+    const refereeId = values.refereeId || null; // id de usuario (UUID)
     const round = Number(values.round);
 
     if (!homeId) found.homeId = 'Elige el equipo local.';
@@ -43,7 +44,10 @@ export default function MatchFormModal({ match, tournaments, teams, matches, ref
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    onSave({ tournamentId: Number(values.tournamentId), round, homeId, awayId, date: values.date, time: values.time, venue: values.venue, refereeId });
+    onSave({
+      tournamentId: Number(values.tournamentId), round, homeId, awayId, date: values.date, time: values.time,
+      venue: values.venue, refereeId, statsKeeperId: values.statsKeeperId || null,
+    });
   };
 
   return (
@@ -102,11 +106,21 @@ export default function MatchFormModal({ match, tournaments, teams, matches, ref
             </Form.Select>
           </Field>
         </div>
-        <div className="col-12">
+        <div className="col-12 col-sm-6">
           <Field id="partido-arbitro" label="Árbitro">
             <Form.Select value={values.refereeId} onChange={setField('refereeId')}>
               <option value="">Sin asignar</option>
               {referees.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </Form.Select>
+          </Field>
+        </div>
+        <div className="col-12 col-sm-6">
+          <Field id="partido-estadigrafo" label="Estadígrafo">
+            <Form.Select value={values.statsKeeperId} onChange={setField('statsKeeperId')}>
+              <option value="">Sin asignar</option>
+              {statsKeepers.map((r) => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </Form.Select>

@@ -4,6 +4,7 @@ import { Lock, Pencil, Plus, Trash2 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import RestrictedActionModal from '../components/RestrictedActionModal';
 import TeamModal from '../components/TeamModal';
+import TeamLogo, { RegistrationBadge } from '../components/TeamLogo';
 import TransferModal from '../components/TransferModal';
 import { PERMISSIONS } from '../data/users';
 import { useAuth } from '../hooks/useAuth';
@@ -25,15 +26,15 @@ export default function Equipos() {
   const freeAgents = players.filter((p) => p.teamId === null);
   const tournamentName = (id) => tournaments.find((t) => t.id === id)?.name ?? 'Sin torneo';
 
-  const handleSave = (data) => {
-    if (modal.team) updateTeam(modal.team.id, data);
-    else addTeam(data);
-    setModal(null);
+  const handleSave = async (data) => {
+    const result = modal.team ? await updateTeam(modal.team.id, data) : await addTeam(data);
+    if (result.ok) setModal(null);
+    else window.alert(result.error);
   };
 
-  const handleDelete = (team) => {
+  const handleDelete = async (team) => {
     if (!window.confirm(`¿Eliminar el equipo "${team.name}"? Sus jugadores quedarán sin equipo.`)) return;
-    const result = removeTeam(team.id);
+    const result = await removeTeam(team.id);
     if (!result.ok) window.alert(result.error);
   };
 
@@ -65,8 +66,14 @@ export default function Equipos() {
             {visible.map((team) => (
               <div key={team.id} className="col-12 col-md-6 col-xl-4">
                 <div className="border rounded-3 p-3 h-100 d-flex flex-column gap-2" style={{ borderTop: '4px solid #F59E0B' }}>
-                  <Link to={`/equipos/${team.id}`} className="h5 fw-bold mb-0 text-decoration-none" style={{ color: '#1E0A3C' }}>{team.name}</Link>
-                  <span className="small text-muted">{tournamentName(team.tournamentId)}</span>
+                  <div className="d-flex align-items-center gap-2">
+                    <TeamLogo team={team} size={40} />
+                    <Link to={`/equipos/${team.id}`} className="h5 fw-bold mb-0 text-decoration-none" style={{ color: '#1E0A3C' }}>{team.name}</Link>
+                  </div>
+                  <span className="small text-muted d-flex align-items-center gap-2">
+                    {tournamentName(team.tournamentId)}
+                    {team.registration && <RegistrationBadge status={team.registration} />}
+                  </span>
                   <span className="small text-dark">Entrenador: {team.coach || 'Sin asignar'}</span>
                   <span className="small text-dark">{players.filter((p) => p.teamId === team.id).length} jugadores</span>
                   <div className="d-flex flex-wrap gap-2 mt-auto pt-2">
@@ -118,9 +125,10 @@ export default function Equipos() {
           player={placing}
           teams={teams}
           teamName={teamName}
-          onConfirm={(toTeamId) => {
-            transferPlayer(placing.id, toTeamId);
-            setPlacing(null);
+          onConfirm={async (toTeamId) => {
+            const result = await transferPlayer(placing.id, toTeamId);
+            if (result.ok) setPlacing(null);
+            else window.alert(result.error);
           }}
           onHide={() => setPlacing(null)}
         />

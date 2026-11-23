@@ -48,6 +48,27 @@ function writeSession(user, token) {
   } catch (error) { console.error(error); }
 }
 
+const mapAccounts = (rows) => rows.map((u) => ({
+  id: u.id,
+  name: `${u.nombre} ${u.apellido}`,
+  firstName: u.nombre,
+  lastName: u.apellido,
+  email: u.correo,
+  role: u.rol.toLowerCase(),
+  status: u.activo ? 'activo' : 'bloqueado',
+}));
+
+// Campos del perfil (/auth/me) que se guardan en la sesión.
+const profileFields = (profile) =>
+  profile
+    ? {
+        teamId: profile.equipo_id ?? null,
+        privacyAcceptedAt: profile.acepta_privacidad_en ?? null,
+        receivesNotifications: profile.recibe_notificaciones ?? true,
+        phone: profile.telefono ?? '',
+      }
+    : {};
+
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(readSession);
   const [accounts, setAccounts] = useState([]);
@@ -59,16 +80,24 @@ export default function AuthProvider({ children }) {
     writeSession(nextUser, token);
   };
 
-  const logout = useCallback(() => {
+  const clearSession = useCallback(() => {
     setAccounts([]);
     setUser(null);
     writeSession(null);
   }, []);
 
+  // RF-02: el backend invalida el token (y todos los anteriores) antes de borrar la sesión local.
+  const logout = useCallback(async () => {
+    if (window.localStorage.getItem(TOKEN_KEY)) {
+      await authService.logout().catch(() => {});
+    }
+    clearSession();
+  }, [clearSession]);
+
   const expireSession = useCallback(() => {
-    logout();
+    clearSession();
     setSessionNotice(SESSION_EXPIRED_NOTICE);
-  }, [logout]);
+  }, [clearSession]);
 
   // El servidor rechazó el token (401): cerrar la sesión en vez de seguir mostrando errores.
   useEffect(() => onUnauthorized(expireSession), [expireSession]);
@@ -88,27 +117,20 @@ export default function AuthProvider({ children }) {
   // La lista de usuarios solo la puede pedir un administrador (el backend responde 401/403 al resto).
   const canManageUsers = Boolean(user) && (ROLE_PERMISSIONS[user.role] || []).includes(PERMISSIONS.MANAGE_USERS);
 
+  const reloadAccounts = useCallback(async () => {
+    try {
+      setAccounts(mapAccounts(await fetchApi('/auth/users')));
+    } catch (error) {
+      console.error('Error cargando usuarios:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (!canManageUsers) return undefined;
     let cancelled = false;
-
-    const cargarUsuarios = async () => {
-      try {
-        const data = await fetchApi('/auth/users');
-        if (cancelled) return;
-        setAccounts(data.map((u) => ({
-          id: u.id,
-          name: `${u.nombre} ${u.apellido}`,
-          email: u.correo,
-          role: u.rol.toLowerCase(),
-          status: u.activo ? 'activo' : 'bloqueado',
-        })));
-      } catch (error) {
-        if (!cancelled) console.error('Error cargando usuarios:', error);
-      }
-    };
-
-    cargarUsuarios();
+    fetchApi('/auth/users')
+      .then((data) => { if (!cancelled) setAccounts(mapAccounts(data)); })
+      .catch((error) => console.error('Error cargando usuarios:', error));
     return () => { cancelled = true; };
   }, [userId, canManageUsers]);
 
@@ -126,21 +148,24 @@ export default function AuthProvider({ children }) {
         teamId: null,
       };
 
+      writeSession(loggedUser, data.token);
+      // Perfil completo: equipo que entrena (permiso sobre su plantel), consentimiento y notificaciones.
+      const profile = await authService.me().catch(() => null);
       setSessionNotice('');
-      startSession(loggedUser, data.token);
+      startSession({ ...loggedUser, ...profileFields(profile) }, data.token);
       return { ok: true };
     } catch (error) {
       return { ok: false, error: error.message };
     }
   };
 
-  const register = async ({ name, email, password }) => {
+  const register = async ({ name, email, password, acceptPrivacy }) => {
     try {
       const parts = name.trim().split(' ');
       const nombre = parts[0];
       const apellido = parts.slice(1).join(' ') || 'Sin apellido';
 
-      await authService.register(nombre, apellido, email, password);
+      await authService.register(nombre, apellido, email, password, acceptPrivacy === true);
     } catch (error) {
       return { ok: false, error: error.message };
     }
@@ -162,7 +187,46 @@ export default function AuthProvider({ children }) {
     return (ROLE_PERMISSIONS[user.role] || []).includes(permission);
   };
 
-  const recoverPassword = () => ({ ok: false, error: 'Recuperación no disponible aún.' });
+  const call = async (action) => {
+    try {
+      return { ok: true, data: await action() };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  };
+
+  // RF-03: el servidor responde lo mismo exista o no el correo.
+  const recoverPassword = (email) => call(() => authService.forgotPassword(email));
+  const resetPassword = (token, password) => call(() => authService.resetPassword(token, password));
+
+  // Cambiar la contraseña cierra las demás sesiones; esta continúa con el token nuevo.
+  const changePassword = async (current, next) => {
+    const result = await call(() => authService.changePassword(current, next));
+    if (result.ok) writeSession(user, result.data.token);
+    return result;
+  };
+
+  const updateProfile = async (data) => {
+    const result = await call(() => authService.updateMe(data));
+    if (result.ok) {
+      const next = { ...user, ...profileFields(result.data) };
+      setUser(next);
+      writeSession(next, window.localStorage.getItem(TOKEN_KEY));
+    }
+    return result;
+  };
+
+  // RF-04: el administrador crea cuentas con rol y edita sus datos.
+  const createAccount = async (data) => {
+    const result = await call(() => authService.createUser(data));
+    if (result.ok) await reloadAccounts();
+    return result;
+  };
+  const updateAccount = async (id, data) => {
+    const result = await call(() => authService.updateUser(id, data));
+    if (result.ok) await reloadAccounts();
+    return result;
+  };
 
   const setAccountStatus = async (id, status) => {
     try {
@@ -200,14 +264,19 @@ export default function AuthProvider({ children }) {
     }
   };
 
-  const canManagePlayers = () => false;
+  // Organizador/administrador: cualquier plantel. Entrenador: solo el equipo que tiene asignado.
+  const canManagePlayers = (teamId) => {
+    if (!can(PERMISSIONS.MANAGE_PLAYERS)) return false;
+    return user.role !== ROLES.COACH || user.teamId === teamId;
+  };
 
   const value = {
     user,
     isGuest: user?.role === ROLES.GUEST,
     accounts,
     sessionNotice,
-    login, register, loginAsGuest, logout, recoverPassword,
+    login, register, loginAsGuest, logout, recoverPassword, resetPassword, changePassword, updateProfile,
+    createAccount, updateAccount,
     setAccountStatus, setAccountRole, removeAccount, can, canManagePlayers,
   };
 

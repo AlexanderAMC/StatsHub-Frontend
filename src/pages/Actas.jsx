@@ -17,6 +17,26 @@ const EVENT_BUTTONS = [
   { type: 'lesion', label: '+ Lesión', cls: 'btn-secondary' },
 ];
 
+// Jugadores en cancha según la convocatoria y los eventos (misma regla que valida el backend).
+// "used" = quienes ya participaron: no pueden volver a entrar desde la banca.
+function onFieldLineup(match, matchEvents) {
+  const lineup = { home: [...(match.lineup?.home ?? [])], away: [...(match.lineup?.away ?? [])] };
+  const used = new Set([...lineup.home, ...lineup.away]);
+  [...matchEvents].sort((a, b) => a.minute - b.minute || a.id - b.id).forEach((e) => {
+    const side = lineup[e.side];
+    if (!side) return;
+    if (e.type === 'sustitucion' || e.type === 'roja') {
+      const index = side.indexOf(e.playerId);
+      if (index >= 0) side.splice(index, 1);
+    }
+    if (e.type === 'sustitucion' && e.relatedId) {
+      side.push(e.relatedId);
+      used.add(e.relatedId);
+    }
+  });
+  return { ...lineup, used: [...used] };
+}
+
 function TeamControls({ name, side, onEvent }) {
   return (
     <div className="p-3 border rounded-3 bg-white text-center h-100">
@@ -44,8 +64,9 @@ export default function Actas() {
   const requestedId = Number(searchParams.get('partido'));
   const match = liveMatches.find((m) => m.id === requestedId) ?? liveMatches[0];
 
-  const handleStart = (matchId, lineup) => {
-    startMatch(matchId, lineup);
+  const handleStart = async (matchId, lineup) => {
+    const result = await startMatch(matchId, lineup);
+    if (!result.ok) return window.alert(result.error);
     setStarting(null);
     setSearchParams({ partido: String(matchId) });
   };
@@ -88,13 +109,19 @@ export default function Actas() {
   }
 
   const matchEvents = events.filter((e) => e.matchId === match.id).sort((a, b) => b.minute - a.minute || b.id - a.id);
+  // Quién sigue en cancha (convocados, menos los que salieron o fueron expulsados, más los que entraron).
+  const currentLineup = onFieldLineup(match, matchEvents);
 
-  const handleFinish = () => {
-    const result = `${teamName(match.homeId)} ${match.scoreHome} - ${match.scoreAway} ${teamName(match.awayId)}`;
-    if (window.confirm(`¿Finalizar el partido?\n${result}\nEl resultado pasará a la tabla de posiciones y se enviará una notificación.`)) {
-      finishMatch(match.id);
-      navigate('/actas', { replace: true });
-    }
+  const notifyError = (result) => {
+    if (!result.ok) window.alert(result.error);
+  };
+
+  const handleFinish = async () => {
+    const summary = `${teamName(match.homeId)} ${match.scoreHome} - ${match.scoreAway} ${teamName(match.awayId)}`;
+    if (!window.confirm(`¿Cerrar el acta?\n${summary}\nEsta acción es irreversible: el resultado pasará a la tabla de posiciones, se notificará a la liga y el árbitro recibirá el acta para validarla.`)) return;
+    const result = await finishMatch(match.id);
+    if (!result.ok) return window.alert(result.error);
+    navigate('/actas', { replace: true });
   };
 
   return (
@@ -125,8 +152,12 @@ export default function Actas() {
             <div className="mb-3" style={{ maxWidth: '260px' }}>
               <label htmlFor="acta-minuto" className="form-label small fw-semibold text-muted mb-1">Minuto actual</label>
               <div className="input-group input-group-sm">
-                <input id="acta-minuto" type="number" min="0" max={MAX_MINUTE} className="form-control" value={match.minute} onChange={(e) => setMinute(match.id, e.target.value)} />
-                <button type="button" className="btn btn-outline-dark" onClick={() => setMinute(match.id, match.minute + 1)}>+1 min</button>
+                <input
+                  id="acta-minuto" type="number" min="0" max={MAX_MINUTE} className="form-control"
+                  key={`${match.id}-${match.minute}`} defaultValue={match.minute}
+                  onBlur={(e) => Number(e.target.value) !== match.minute && setMinute(match.id, e.target.value).then(notifyError)}
+                />
+                <button type="button" className="btn btn-outline-dark" onClick={() => setMinute(match.id, match.minute + 1).then(notifyError)}>+1 min</button>
               </div>
             </div>
 
@@ -140,7 +171,7 @@ export default function Actas() {
             </div>
 
             <div className="d-flex flex-wrap justify-content-between gap-2 mt-4 pt-3 border-top">
-              <button type="button" className="btn btn-outline-secondary d-flex align-items-center gap-2" onClick={() => undoLastEvent(match.id)} disabled={matchEvents.length === 0}>
+              <button type="button" className="btn btn-outline-secondary d-flex align-items-center gap-2" onClick={() => undoLastEvent(match.id).then(notifyError)} disabled={matchEvents.length === 0}>
                 <Undo2 size={16} /> Deshacer último evento
               </button>
               <button type="button" className="btn text-white fw-bold" style={{ backgroundColor: '#1E0A3C' }} onClick={handleFinish}>
@@ -160,7 +191,10 @@ export default function Actas() {
                 {matchEvents.map((e) => (
                   <li key={e.id} className="d-flex align-items-start gap-2 pb-2 border-bottom small text-dark fw-medium">
                     <span className={`badge ${EVENT_TYPES[e.type].badge} flex-shrink-0`}>{e.minute}&apos;</span>
-                    <span>{formatEvent(e, teamName(e.side === 'home' ? match.homeId : match.awayId), playerName)}</span>
+                    <span>
+                      {formatEvent(e, teamName(e.side === 'home' ? match.homeId : match.awayId), playerName)}
+                      {e.automatic && <span className="text-muted fw-normal"> (doble amarilla)</span>}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -173,14 +207,15 @@ export default function Actas() {
       {startModal}
       {draft && (
         <EventModal
-          match={match}
+          match={{ ...match, lineup: currentLineup }}
           side={draft.side}
           type={draft.type}
-          players={players}
+          players={players.filter((p) => !currentLineup.used.includes(p.id) || currentLineup[draft.side].includes(p.id))}
           teamName={teamName}
-          onSave={(data) => {
-            addEvent(match.id, data);
-            setDraft(null);
+          onSave={async (data) => {
+            const result = await addEvent(match.id, data);
+            if (result.ok) setDraft(null);
+            else window.alert(result.error);
           }}
           onHide={() => setDraft(null)}
         />

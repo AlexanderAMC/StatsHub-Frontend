@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// Origen del backend (sin /api), para archivos como los escudos (/uploads/...).
+export const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
 const TOKEN_KEY = 'statshub_token';
 const UNAUTHORIZED_EVENT = 'statshub:no-autorizado';
 
@@ -21,8 +23,10 @@ export function onUnauthorized(handler) {
 export const fetchApi = async (endpoint, options = {}) => {
   const token = localStorage.getItem(TOKEN_KEY);
 
+  // Con FormData (subida de archivos) el navegador define el Content-Type con su boundary.
+  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isForm ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers,
   };
   if (token) headers.Authorization = `Bearer ${token}`;

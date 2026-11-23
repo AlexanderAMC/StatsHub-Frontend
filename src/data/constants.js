@@ -14,14 +14,17 @@ export const MATCH_BADGE = {
 
 export const MAX_MINUTE = 130;
 
-export const TOURNAMENT_STATUSES = ['Planificado', 'Inscripciones', 'En Curso', 'Finalizado'];
+export const TOURNAMENT_STATUSES = ['Planificado', 'Inscripciones', 'En Curso', 'Finalizado', 'Cancelado'];
 
 export const STATUS_BADGE = {
   'En Curso': 'bg-success',
   Inscripciones: 'bg-primary',
   Planificado: 'bg-warning text-dark',
   Finalizado: 'bg-secondary',
+  Cancelado: 'bg-danger',
 };
+
+export const MAX_SUBSTITUTIONS = 5;
 
 export const POSITIONS = ['Portero', 'Defensa', 'Mediocampista', 'Delantero'];
 

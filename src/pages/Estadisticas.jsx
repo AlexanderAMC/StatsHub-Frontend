@@ -14,8 +14,33 @@ const VIEWS = [
   { id: 'goleadores', label: 'Goleadores' },
   { id: 'asistencias', label: 'Asistencias' },
   { id: 'rendimiento', label: 'Rendimiento' },
+  { id: 'fairplay', label: 'Fair Play' },
   { id: 'prediccion', label: 'Predicción' },
 ];
+
+// RF-35: ranking de Fair Play (amarilla = 1 punto, roja = 3). Menos puntos = mejor posición.
+function FairPlayTable({ rows }) {
+  return (
+    <div className="table-responsive">
+      <table className="table table-hover align-middle border">
+        <thead className="table-light">
+          <tr><th>#</th><th>Equipo</th><th className="text-center">Amarillas</th><th className="text-center">Rojas</th><th className="text-center">Puntos</th></tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.teamId}>
+              <td className="fw-bold">{i + 1}</td>
+              <td className="fw-semibold text-dark">{r.team}</td>
+              <td className="text-center"><span className="badge bg-warning text-dark">{r.yellow}</span></td>
+              <td className="text-center"><span className="badge bg-danger">{r.red}</span></td>
+              <td className="text-center fw-bold">{r.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 const FORM_BADGE = { G: 'bg-success', E: 'bg-secondary', P: 'bg-danger' };
 const TREND_STYLE = { 'Al alza': 'text-success', 'A la baja': 'text-danger', Estable: 'text-secondary', 'Sin datos': 'text-muted' };
@@ -184,7 +209,7 @@ function PredictionTable({ items, teamName }) {
 }
 
 export default function Estadisticas() {
-  const { tournaments, teams, players, matches, events, teamName } = useData();
+  const { tournaments, teams, players, matches, events, predictions, teamName } = useData();
   const [params, setParams] = useSearchParams();
 
   const view = VIEWS.find((v) => v.id === params.get('vista'))?.id ?? 'posiciones';
@@ -217,14 +242,29 @@ export default function Estadisticas() {
     () => standings.map((row) => ({ ...row, form: teamForm(row.teamId, finished), trend: teamTrend(row.teamId, finished) })),
     [standings, finished],
   );
+  const fairPlay = useMemo(() => {
+    const table = new Map(tTeams.map((t) => [t.id, { teamId: t.id, team: t.name, yellow: 0, red: 0 }]));
+    const byMatch = new Map(tMatches.map((m) => [m.id, m]));
+    for (const e of events) {
+      const m = byMatch.get(e.matchId);
+      if (!m || (e.type !== 'amarilla' && e.type !== 'roja')) continue;
+      const row = table.get(e.side === 'home' ? m.homeId : m.awayId);
+      if (row) row[e.type === 'amarilla' ? 'yellow' : 'red'] += 1;
+    }
+    return [...table.values()]
+      .map((r) => ({ ...r, points: r.yellow + 3 * r.red }))
+      .sort((a, b) => a.points - b.points || a.team.localeCompare(b.team));
+  }, [tTeams, tMatches, events]);
+
+  // RF-37: predicción del modelo de Machine Learning del servidor; si no está, cálculo local.
   const upcoming = useMemo(
     () =>
       tMatches
         .filter((m) => m.status === MATCH_STATUS.SCHEDULED)
         .sort(byDateTime)
-        .map((match) => ({ match, prediction: predictMatch(match.homeId, match.awayId, finished) }))
+        .map((match) => ({ match, prediction: predictions[match.id] ?? predictMatch(match.homeId, match.awayId, finished) }))
         .filter((item) => item.prediction),
-    [tMatches, finished],
+    [tMatches, finished, predictions],
   );
 
   if (!selected) {
@@ -294,6 +334,7 @@ export default function Estadisticas() {
       {view === 'goleadores' && (scorers.length === 0 ? <EmptyState title="Aún no hay goles registrados">Los goles aparecerán aquí a medida que se registren las actas.</EmptyState> : <LeaderTable rows={scorers} valueKey="goles" valueLabel="Goles" teamName={teamName} />)}
       {view === 'asistencias' && (assisters.length === 0 ? <EmptyState title="Aún no hay asistencias registradas">Se registran al anotar un gol en el acta digital.</EmptyState> : <LeaderTable rows={assisters} valueKey="asistencias" valueLabel="Asistencias" teamName={teamName} />)}
       {view === 'rendimiento' && (performance.length === 0 ? <EmptyState title="Sin equipos">Inscribe equipos para ver su rendimiento.</EmptyState> : <PerformanceTable rows={performance} />)}
+      {view === 'fairplay' && (fairPlay.length === 0 ? <EmptyState title="Sin equipos">Inscribe equipos para ver el ranking de Fair Play.</EmptyState> : <FairPlayTable rows={fairPlay} />)}
       {view === 'prediccion' && (upcoming.length === 0 ? <EmptyState title="No hay partidos por predecir">Se necesitan partidos programados y resultados anteriores en el torneo.</EmptyState> : <PredictionTable items={upcoming} teamName={teamName} />)}
     </div>
   );

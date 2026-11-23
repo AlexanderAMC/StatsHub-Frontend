@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, BarChart2, Check, Circle, Eye, EyeOff, FileText, Lock, Mail, Radio, User,
@@ -28,15 +28,6 @@ const passwordChecks = (password) => [
   { ok: /[a-z]/.test(password) && /[A-Z]/.test(password), label: 'Mayúsculas y minúsculas' },
   { ok: /\d/.test(password), label: 'Al menos un número' },
 ];
-
-// Ejecuta una acción diferida y la cancela si el componente se desmonta.
-function useDelayed() {
-  const timer = useRef(null);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  return (fn, ms) => {
-    timer.current = setTimeout(fn, ms);
-  };
-}
 
 function PitchLines() {
   const line = (delay) => ({ '--d': `${delay}s` });
@@ -219,7 +210,7 @@ function LoginForm({ onRecover }) {
 
 function RegisterForm() {
   const { register } = useAuth();
-  const [values, setValues] = useState({ name: '', email: '', password: '', confirm: '' });
+  const [values, setValues] = useState({ name: '', email: '', password: '', confirm: '', acceptPrivacy: false });
   const [showPassword, setShowPassword] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [serverError, setServerError] = useState('');
@@ -237,6 +228,7 @@ function RegisterForm() {
     if (!EMAIL_RE.test(values.email.trim())) found.email = 'Ingresa un correo válido.';
     if (!passwordChecks(values.password).every((c) => c.ok)) found.password = 'La contraseña no cumple los requisitos.';
     if (values.confirm !== values.password) found.confirm = 'Las contraseñas no coinciden.';
+    if (!values.acceptPrivacy) found.acceptPrivacy = 'Debes aceptar la política de privacidad para crear la cuenta.';
     return found;
   };
 
@@ -289,6 +281,20 @@ function RegisterForm() {
         placeholder="Repite la contraseña" autoComplete="new-password" value={values.confirm}
         onChange={setField('confirm')} error={errors.confirm}
       />
+      {/* RNF-11 (Ley 19.628): aceptación explícita del tratamiento de datos personales. */}
+      <div className="form-check mb-2">
+        <input
+          id="reg-privacidad" type="checkbox" className={`form-check-input ${errors.acceptPrivacy ? 'is-invalid' : ''}`}
+          checked={values.acceptPrivacy}
+          onChange={(e) => setValues((prev) => ({ ...prev, acceptPrivacy: e.target.checked }))}
+          aria-describedby="reg-privacidad-texto"
+        />
+        <label htmlFor="reg-privacidad" className="form-check-label small text-dark" id="reg-privacidad-texto">
+          Acepto la política de privacidad: StatsHub usa mis datos (nombre, correo y estadísticas deportivas) solo para la
+          gestión de la liga, conforme a la Ley N.º 19.628. Puedo solicitar su rectificación o eliminación.
+        </label>
+        {errors.acceptPrivacy && <div className="invalid-feedback d-block">{errors.acceptPrivacy}</div>}
+      </div>
       <SubmitButton busy={status === 'loading'} busyLabel="Creando cuenta…">
         Crear cuenta <ArrowRight size={18} aria-hidden="true" />
       </SubmitButton>
@@ -299,13 +305,12 @@ function RegisterForm() {
 
 function RecoverForm() {
   const { recoverPassword } = useAuth();
-  const later = useDelayed();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
   const [status, setStatus] = useState('idle');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!EMAIL_RE.test(email.trim())) {
       setError('Ingresa un correo válido.');
@@ -314,10 +319,12 @@ function RecoverForm() {
     }
     setError('');
     setStatus('loading');
-    later(() => {
-      recoverPassword(email);
-      setStatus('sent');
-    }, 800);
+    const result = await recoverPassword(email.trim());
+    if (result.ok) setStatus('sent');
+    else {
+      setStatus('idle');
+      setError(result.error);
+    }
   };
 
   if (status === 'sent') {
@@ -338,7 +345,7 @@ function RecoverForm() {
       <SubmitButton busy={status === 'loading'} busyLabel="Enviando…">
         Enviar instrucciones <ArrowRight size={18} aria-hidden="true" />
       </SubmitButton>
-      <p className="small text-muted text-center mt-2 mb-0">En esta demostración no se envía ningún correo real.</p>
+      <p className="small text-muted text-center mt-2 mb-0">El enlace para crear una nueva contraseña es válido por 1 hora.</p>
     </form>
   );
 }

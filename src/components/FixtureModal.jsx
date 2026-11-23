@@ -12,6 +12,7 @@ export default function FixtureModal({ tournaments, teams, matches, referees, ve
   const [venue, setVenue] = useState(venues[0]);
   const [error, setError] = useState('');
   const [created, setCreated] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const preview = useMemo(() => {
     if (!tournamentId || !startDate) return null;
@@ -28,7 +29,7 @@ export default function FixtureModal({ tournaments, teams, matches, referees, ve
     return { matches: fixture.length, rounds: new Set(fixture.map((f) => f.round)).size };
   }, [tournamentId, startDate, venue, matches, teams, referees]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!tournamentId) {
       setError('No hay torneos con al menos 2 equipos.');
@@ -39,7 +40,11 @@ export default function FixtureModal({ tournaments, teams, matches, referees, ve
       return;
     }
     setError('');
-    setCreated(onGenerate(Number(tournamentId), startDate, venue));
+    setSaving(true);
+    const result = await onGenerate(Number(tournamentId), startDate, venue);
+    setSaving(false);
+    if (result.ok) setCreated(result.created);
+    else setError(result.error);
   };
 
   return (
@@ -49,7 +54,7 @@ export default function FixtureModal({ tournaments, teams, matches, referees, ve
       onHide={onHide}
       onSubmit={handleSubmit}
       submitLabel="Generar partidos"
-      submitDisabled={created !== null}
+      submitDisabled={created !== null || saving}
     >
       <Field id="fixture-torneo" label="Torneo">
         <Form.Select value={tournamentId} onChange={(e) => setTournamentId(e.target.value)}>

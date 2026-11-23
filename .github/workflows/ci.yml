@@ -1,0 +1,29 @@
+# CI del frontend (RNF-23): lint, tests y build de producción.
+name: CI Frontend
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - name: Build de producción
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://statshub.cl/api' }}
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+          retention-days: 7

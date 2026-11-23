@@ -8,8 +8,11 @@ export default function PlayerModal({ player, teamPlayers, onSave, onHide }) {
   const [values, setValues] = useState({
     name: player?.name ?? '',
     number: player?.number ?? '',
-    position: player?.position ?? POSITIONS[0],
+    position: POSITIONS.includes(player?.position) ? player.position : POSITIONS[0],
+    birthDate: player?.birthDate ?? '',
+    rut: player?.rut ?? '',
   });
+  const today = new Date().toISOString().slice(0, 10);
   const [errors, setErrors] = useState({});
 
   const setField = (field) => (e) => setValues((prev) => ({ ...prev, [field]: e.target.value }));
@@ -22,9 +25,10 @@ export default function PlayerModal({ player, teamPlayers, onSave, onHide }) {
     if (!name) found.name = 'Ingresa el nombre del jugador.';
     if (!Number.isInteger(number) || number < 1 || number > 99) found.number = 'Ingresa un número entre 1 y 99.';
     else if (teamPlayers.some((p) => p.id !== player?.id && p.number === number)) found.number = 'Ese número ya está en el plantel.';
+    if (values.birthDate && values.birthDate > today) found.birthDate = 'La fecha no puede ser futura.';
     setErrors(found);
     if (Object.keys(found).length > 0) return;
-    onSave({ name, number, position: values.position });
+    onSave({ name, number, position: values.position, birthDate: values.birthDate, rut: values.rut.trim() });
   };
 
   return (
@@ -45,6 +49,17 @@ export default function PlayerModal({ player, teamPlayers, onSave, onHide }) {
                 <option key={p} value={p}>{p}</option>
               ))}
             </Form.Select>
+          </Field>
+        </div>
+        <div className="col-6">
+          {/* RF-16: con la fecha de nacimiento el servidor valida la edad según la categoría del torneo. */}
+          <Field id="jugador-nacimiento" label="Fecha de nacimiento" error={errors.birthDate}>
+            <Form.Control type="date" max={today} value={values.birthDate} onChange={setField('birthDate')} isInvalid={Boolean(errors.birthDate)} />
+          </Field>
+        </div>
+        <div className="col-6">
+          <Field id="jugador-rut" label="RUT (opcional)">
+            <Form.Control type="text" placeholder="12345678-9" value={values.rut} onChange={setField('rut')} />
           </Field>
         </div>
       </div>
