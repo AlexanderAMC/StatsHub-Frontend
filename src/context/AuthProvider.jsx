@@ -66,6 +66,11 @@ const profileFields = (profile) =>
         privacyAcceptedAt: profile.acepta_privacidad_en ?? null,
         receivesNotifications: profile.recibe_notificaciones ?? true,
         phone: profile.telefono ?? '',
+        plan: profile.plan ?? null,
+        planEnd: profile.plan_fin ?? null,
+        fee: profile.tarifa_partido ?? null,
+        // Permisos efectivos (rol + plan) calculados por el servidor.
+        permissions: Array.isArray(profile.permisos) ? profile.permisos : undefined,
       }
     : {};
 
@@ -184,7 +189,16 @@ export default function AuthProvider({ children }) {
 
   const can = (permission) => {
     if (!user || user.role === ROLES.GUEST) return false;
-    return (ROLE_PERMISSIONS[user.role] || []).includes(permission);
+    return (user.permissions ?? ROLE_PERMISSIONS[user.role] ?? []).includes(permission);
+  };
+
+  // Vuelve a leer el perfil (p. ej. tras comprar un plan) para actualizar permisos.
+  const refreshProfile = async () => {
+    const profile = await authService.me().catch(() => null);
+    if (!profile || !user) return;
+    const next = { ...user, ...profileFields(profile) };
+    setUser(next);
+    writeSession(next, window.localStorage.getItem(TOKEN_KEY));
   };
 
   const call = async (action) => {
@@ -265,9 +279,11 @@ export default function AuthProvider({ children }) {
   };
 
   // Organizador/administrador: cualquier plantel. Entrenador: solo el equipo que tiene asignado.
+  // Liga (admin/organizador): cualquier plantel. Entrenador o plan Pro: solo su equipo. Plan Ultra: equipos de sus torneos (lo valida el servidor).
   const canManagePlayers = (teamId) => {
     if (!can(PERMISSIONS.MANAGE_PLAYERS)) return false;
-    return user.role !== ROLES.COACH || user.teamId === teamId;
+    if (user.role === ROLES.ADMIN || user.role === ROLES.ORGANIZER || can(PERMISSIONS.MANAGE_TEAMS)) return true;
+    return user.teamId === teamId;
   };
 
   const value = {
@@ -276,7 +292,7 @@ export default function AuthProvider({ children }) {
     accounts,
     sessionNotice,
     login, register, loginAsGuest, logout, recoverPassword, resetPassword, changePassword, updateProfile,
-    createAccount, updateAccount,
+    createAccount, updateAccount, refreshProfile,
     setAccountStatus, setAccountRole, removeAccount, can, canManagePlayers,
   };
 

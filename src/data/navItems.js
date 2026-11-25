@@ -1,15 +1,26 @@
-import { BarChart2, CalendarDays, CreditCard, FileText, LayoutDashboard, ShieldCheck, Trophy, UserCog, Users } from 'lucide-react';
+import {
+  BarChart2, CalendarDays, CreditCard, Crown, FileText, Flag, LayoutDashboard, Receipt, ShieldCheck, Trophy, UserCog, Users, Wallet,
+} from 'lucide-react';
 import { PERMISSIONS } from './users';
 
-// permission: sin ella el ítem aparece con candado (o se oculta si hideIfDenied).
+const P = PERMISSIONS;
+
+// Menú por perfil: cada opción solo aparece a quien puede usarla (sin candados).
+//   permission: permiso requerido · anyOf: basta uno de varios · roles: solo esos roles · members: requiere cuenta.
 export const NAV_ITEMS = [
-  { path: '/', label: 'Dashboard General', icon: LayoutDashboard },
-  { path: '/torneos', label: 'Gestión de Torneos', icon: Trophy },
-  { path: '/equipos', label: 'Equipos y Jugadores', icon: Users },
+  // Portal público (todos)
+  { path: '/', label: 'Inicio', icon: LayoutDashboard },
   { path: '/calendario', label: 'Calendario de Partidos', icon: CalendarDays },
-  { path: '/actas', label: 'Actas Digitales (En Vivo)', icon: FileText, permission: PERMISSIONS.RECORD_MATCHES },
   { path: '/estadisticas', label: 'Posiciones y Analítica', icon: BarChart2 },
-  { path: '/pagos', label: 'Pagos de Inscripción', icon: CreditCard, permission: PERMISSIONS.MANAGE_TEAMS, hideIfDenied: true },
-  { path: '/usuarios', label: 'Usuarios y Roles', icon: UserCog, permission: PERMISSIONS.MANAGE_USERS, hideIfDenied: true },
-  { path: '/auditoria', label: 'Auditoría', icon: ShieldCheck, permission: PERMISSIONS.MANAGE_USERS, hideIfDenied: true },
+  { path: '/equipos', label: 'Equipos y Jugadores', icon: Users },
+  { path: '/planes', label: 'Planes', icon: Crown },
+  // Gestión (según rol o plan)
+  { path: '/torneos', label: 'Gestión de Torneos', icon: Trophy, permission: P.MANAGE_TOURNAMENTS },
+  { path: '/actas', label: 'Actas Digitales (En Vivo)', icon: FileText, permission: P.RECORD_MATCHES },
+  { path: '/cobros', label: 'Cobros a Equipos', icon: Receipt, anyOf: [P.COLLECT, P.OWN_TEAM] },
+  { path: '/oficiales', label: 'Pagos a Oficiales', icon: Flag, permission: P.PAY_OFFICIALS },
+  { path: '/mis-pagos', label: 'Mis Pagos', icon: Wallet, roles: ['arbitro', 'estadigrafo'] },
+  { path: '/pagos', label: 'Comprobantes', icon: CreditCard, members: true },
+  { path: '/usuarios', label: 'Usuarios y Roles', icon: UserCog, permission: P.MANAGE_USERS },
+  { path: '/auditoria', label: 'Auditoría', icon: ShieldCheck, permission: P.MANAGE_USERS },
 ];

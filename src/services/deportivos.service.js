@@ -56,6 +56,32 @@ export const deportivosService = {
   crearCobro: (equipoId, torneoId) => fetchApi('/pagos/inscripcion', json('POST', { equipo_id: equipoId, torneo_id: torneoId })),
   getPagos: () => fetchApi('/pagos'),
   getPago: (id) => fetchApi(`/pagos/${encodeURIComponent(id)}`),
+  // Planes y suscripciones
+  getPlanes: () => fetchApi('/planes'),
+  getMiSuscripcion: () => fetchApi('/suscripciones/mia'),
+  comprarPlan: (plan, periodo) => fetchApi('/suscripciones', json('POST', { plan, periodo })),
+  updatePlan: (codigo, data) => fetchApi(`/planes/${codigo}`, json('PUT', data)),
+  getResumenSuscripciones: () => fetchApi('/suscripciones'),
+
+  // Cobros a equipos
+  getCobros: () => fetchApi('/cobros'),
+  createCobro: (data) => fetchApi('/cobros', json('POST', data)),
+  createPlanillas: (partidoId, monto) => fetchApi('/cobros/planillas', json('POST', { partido_id: partidoId, monto })),
+  pagarCobro: (id) => fetchApi(`/cobros/${id}/pagar`, { method: 'POST' }),
+  anularCobro: (id) => fetchApi(`/cobros/${id}/anular`, { method: 'POST' }),
+
+  // Oficiales de partido
+  setTarifaOficial: (torneoId, usuarioId, tarifa) => fetchApi(`/torneos/${torneoId}/oficiales/${usuarioId}`, json('PUT', { tarifa })),
+  getPendientesOficial: (oficialId, torneoId) =>
+    fetchApi(`/liquidaciones/pendientes?oficial_id=${oficialId}${torneoId ? `&torneo_id=${torneoId}` : ''}`),
+  getMisPendientes: () => fetchApi('/liquidaciones/mis-pendientes'),
+  getLiquidaciones: () => fetchApi('/liquidaciones'),
+  crearLiquidacion: (oficialId, torneoId) => fetchApi('/liquidaciones', json('POST', { oficial_id: oficialId, torneo_id: torneoId || null })),
+  pagarLiquidacion: (id, data) => fetchApi(`/liquidaciones/${id}/pagar`, json('POST', data)),
+  confirmarLiquidacion: (id, conforme, observacion) => fetchApi(`/liquidaciones/${id}/confirmar`, json('POST', { conforme, observacion })),
+  anularLiquidacion: (id) => fetchApi(`/liquidaciones/${id}/anular`, { method: 'POST' }),
+  enviarInforme: (partidoId, informe) => fetchApi(`/partidos/${partidoId}/informe`, json('POST', { informe })),
+
   getAuditoria: ({ pagina = 1, limite = 50, accion = '' } = {}) =>
     fetchApi(`/auditoria?pagina=${pagina}&limite=${limite}${accion ? `&accion=${encodeURIComponent(accion)}` : ''}`),
 };

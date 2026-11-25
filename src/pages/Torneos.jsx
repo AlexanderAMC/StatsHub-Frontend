@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Lock, Pencil, Plus, Search, Tags, Trash2 } from 'lucide-react';
+import { Building2, Pencil, Plus, Search, Tags, Trash2 } from 'lucide-react';
 import CategoriesModal from '../components/CategoriesModal';
 import LeagueModal from '../components/LeagueModal';
 import RestrictedActionModal from '../components/RestrictedActionModal';
 import TournamentModal from '../components/TournamentModal';
 import { STATUS_BADGE, TOURNAMENT_STATUSES } from '../data/constants';
-import { PERMISSIONS } from '../data/users';
+import { PERMISSIONS, isLeagueManagerRole } from '../data/users';
 import { useAuth } from '../hooks/useAuth';
 import { useData } from '../hooks/useData';
 import { formatDateShort } from '../utils/dates';
 
 export default function Torneos() {
   const { tournaments, categories, teams, addTournament, updateTournament, removeTournament } = useData();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const canManage = can(PERMISSIONS.MANAGE_TOURNAMENTS);
 
   const [search, setSearch] = useState('');
@@ -27,7 +27,8 @@ export default function Torneos() {
   const guarded = (action) => () => (canManage ? action() : setShowRestricted(true));
 
   const query = search.trim().toLowerCase();
-  const visible = tournaments.filter((t) => {
+  // El organizador del plan Ultra gestiona solo sus torneos; la administración de la liga, todos.
+  const visible = tournaments.filter((t) => isLeagueManagerRole(user?.role) || t.ownerId === user?.id).filter((t) => {
     const textOk = !query || t.name.toLowerCase().includes(query) || t.category.toLowerCase().includes(query);
     const statusOk = statusFilter === 'Todos' || t.status === statusFilter;
     return textOk && statusOk;
@@ -53,20 +54,20 @@ export default function Torneos() {
           <p className="text-muted small mb-0">Administra las ligas, categorías, fechas y su estado.</p>
         </div>
         <div className="d-flex flex-wrap gap-2">
-          <button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guarded(() => setShowLeague(true))}>
-            {canManage ? <Building2 size={18} /> : <Lock size={18} />} Datos de la liga
-          </button>
-          <button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guarded(() => setShowCategories(true))}>
-            {canManage ? <Tags size={18} /> : <Lock size={18} />} Categorías
-          </button>
-          <button
+          {canManage && (<button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guarded(() => setShowLeague(true))}>
+            <Building2 size={18} /> Datos de la liga
+          </button>)}
+          {canManage && (<button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guarded(() => setShowCategories(true))}>
+            <Tags size={18} /> Categorías
+          </button>)}
+          {canManage && (<button
             type="button"
             onClick={guarded(() => setModal({ tournament: null }))}
             className="btn text-white fw-bold d-flex align-items-center gap-2 px-3 py-2 rounded-3 shadow-sm"
             style={{ backgroundColor: '#1E0A3C' }}
           >
-            {canManage ? <Plus size={18} /> : <Lock size={18} />} Crear nuevo torneo
-          </button>
+            <Plus size={18} /> Crear nuevo torneo
+          </button>)}
         </div>
       </div>
 
@@ -111,14 +112,14 @@ export default function Torneos() {
                 <td className="text-center fw-medium">{teams.filter((team) => team.tournamentId === t.id).length} / {t.teams}</td>
                 <td className="text-center"><span className={`badge px-3 py-1 rounded-pill ${STATUS_BADGE[t.status] ?? 'bg-secondary'}`}>{t.status}</span></td>
                 <td className="text-end text-nowrap">
-                  <button type="button" className="btn btn-sm btn-outline-dark me-2" onClick={guarded(() => setModal({ tournament: t }))}>
-                    {canManage ? <Pencil size={14} className="me-1" /> : <Lock size={14} className="me-1" />} Editar
-                  </button>
+                  {canManage && (<button type="button" className="btn btn-sm btn-outline-dark me-2" onClick={guarded(() => setModal({ tournament: t }))}>
+                    <Pencil size={14} className="me-1" /> Editar
+                  </button>)}
                   <Link to={`/equipos?torneo=${t.id}`} className="btn btn-sm btn-outline-dark me-2">Equipos</Link>
                   <Link to={`/estadisticas?torneo=${t.id}`} className="btn btn-sm text-white me-2" style={{ backgroundColor: '#1E0A3C' }}>Posiciones</Link>
-                  <button type="button" className="btn btn-sm btn-outline-danger" onClick={guarded(() => handleDelete(t))} aria-label={`Eliminar ${t.name}`}>
-                    {canManage ? <Trash2 size={14} /> : <Lock size={14} />}
-                  </button>
+                  {canManage && (<button type="button" className="btn btn-sm btn-outline-danger" onClick={guarded(() => handleDelete(t))} aria-label={`Eliminar ${t.name}`}>
+                    <Trash2 size={14} />
+                  </button>)}
                 </td>
               </tr>
             ))}

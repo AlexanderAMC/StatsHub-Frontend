@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CalendarDays, Lock, Radio, Target, Trophy, Users } from 'lucide-react';
+import { CalendarDays, Radio, Target, Trophy, Users } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import KpiCard from '../components/KpiCard';
 import { MATCH_STATUS } from '../data/constants';
@@ -64,9 +64,9 @@ export default function Dashboard() {
                     </div>
                     <div className="d-flex align-items-center justify-content-between mt-2">
                       <small className="text-muted">Minuto {m.minute}&apos;</small>
-                      <Link to={`/actas?partido=${m.id}`} className="btn btn-sm btn-outline-dark d-flex align-items-center gap-1">
-                        {!canRecord && <Lock size={14} />} Abrir acta
-                      </Link>
+                      {canRecord && (<Link to={`/actas?partido=${m.id}`} className="btn btn-sm btn-outline-dark d-flex align-items-center gap-1">
+                         Abrir acta
+                      </Link>)}
                     </div>
                   </div>
                 ))}

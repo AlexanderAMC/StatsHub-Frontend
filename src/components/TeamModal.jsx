@@ -7,7 +7,8 @@ export default function TeamModal({ team, tournaments, teams, defaultTournamentI
   const [values, setValues] = useState({
     name: team?.name ?? '',
     tournamentId: String(team?.tournamentId ?? defaultTournamentId ?? tournaments[0]?.id ?? ''),
-    coach: team?.coach ?? '',
+    coach: team?.coach === 'Sin asignar' ? '' : team?.coach ?? '',
+    coachEmail: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -25,7 +26,7 @@ export default function TeamModal({ team, tournaments, teams, defaultTournamentI
     if (!tournamentId) found.tournamentId = 'Elige un torneo.';
     setErrors(found);
     if (Object.keys(found).length > 0) return;
-    onSave({ name, tournamentId, coach: values.coach.trim() });
+    onSave({ name, tournamentId, coach: values.coach.trim(), coachEmail: values.coachEmail.trim() });
   };
 
   return (
@@ -42,6 +43,9 @@ export default function TeamModal({ team, tournaments, teams, defaultTournamentI
       </Field>
       <Field id="equipo-entrenador" label="Entrenador (opcional)">
         <Form.Control type="text" value={values.coach} onChange={setField('coach')} />
+      </Field>
+      <Field id="equipo-entrenador-correo" label="Correo de la cuenta del entrenador (opcional)">
+        <Form.Control type="email" placeholder="Le permite gestionar el plantel con el plan Pro" value={values.coachEmail} onChange={setField('coachEmail')} />
       </Field>
     </FormModal>
   );

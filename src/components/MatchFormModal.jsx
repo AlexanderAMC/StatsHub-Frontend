@@ -16,6 +16,7 @@ export default function MatchFormModal({ match, tournaments, teams, matches, ref
     venue: match?.venue ?? venues[0],
     refereeId: match?.refereeId ? String(match.refereeId) : '',
     statsKeeperId: match?.statsKeeperId ?? '',
+    doubleRole: match?.doubleRole ?? false,
   });
   const [errors, setErrors] = useState({});
 
@@ -46,7 +47,7 @@ export default function MatchFormModal({ match, tournaments, teams, matches, ref
 
     onSave({
       tournamentId: Number(values.tournamentId), round, homeId, awayId, date: values.date, time: values.time,
-      venue: values.venue, refereeId, statsKeeperId: values.statsKeeperId || null,
+      venue: values.venue, refereeId, statsKeeperId: values.statsKeeperId || null, doubleRole: values.doubleRole,
     });
   };
 
@@ -125,6 +126,9 @@ export default function MatchFormModal({ match, tournaments, teams, matches, ref
               ))}
             </Form.Select>
           </Field>
+        </div>
+        <div className="col-12">
+          <Form.Check id="partido-doble-funcion" type="checkbox" label="Doble función (el árbitro también lleva la estadística y cobra ambas)" checked={values.doubleRole} onChange={(e) => setValues((v) => ({ ...v, doubleRole: e.target.checked }))} />
         </div>
       </div>
     </FormModal>

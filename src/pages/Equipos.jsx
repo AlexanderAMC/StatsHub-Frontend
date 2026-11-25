@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Lock, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import RestrictedActionModal from '../components/RestrictedActionModal';
 import TeamModal from '../components/TeamModal';
@@ -53,9 +53,9 @@ export default function Equipos() {
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
-            <button type="button" onClick={guarded(() => setModal({ team: null }))} className="btn text-white fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#1E0A3C' }}>
-              {canManage ? <Plus size={18} /> : <Lock size={18} />} Nuevo equipo
-            </button>
+            {canManage && (<button type="button" onClick={guarded(() => setModal({ team: null }))} className="btn text-white fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#1E0A3C' }}>
+              <Plus size={18} /> Nuevo equipo
+            </button>)}
           </div>
         </div>
 
@@ -78,12 +78,12 @@ export default function Equipos() {
                   <span className="small text-dark">{players.filter((p) => p.teamId === team.id).length} jugadores</span>
                   <div className="d-flex flex-wrap gap-2 mt-auto pt-2">
                     <Link to={`/equipos/${team.id}`} className="btn btn-sm text-white" style={{ backgroundColor: '#1E0A3C' }}>Ver plantel</Link>
-                    <button type="button" className="btn btn-sm btn-outline-dark" onClick={guarded(() => setModal({ team }))} aria-label={`Editar ${team.name}`}>
-                      {canManage ? <Pencil size={14} /> : <Lock size={14} />}
-                    </button>
-                    <button type="button" className="btn btn-sm btn-outline-danger" onClick={guarded(() => handleDelete(team))} aria-label={`Eliminar ${team.name}`}>
-                      {canManage ? <Trash2 size={14} /> : <Lock size={14} />}
-                    </button>
+                    {canManage && (<button type="button" className="btn btn-sm btn-outline-dark" onClick={guarded(() => setModal({ team }))} aria-label={`Editar ${team.name}`}>
+                      <Pencil size={14} />
+                    </button>)}
+                    {canManage && (<button type="button" className="btn btn-sm btn-outline-danger" onClick={guarded(() => handleDelete(team))} aria-label={`Eliminar ${team.name}`}>
+                      <Trash2 size={14} />
+                    </button>)}
                   </div>
                 </div>
               </div>
@@ -99,9 +99,9 @@ export default function Equipos() {
             {freeAgents.map((p) => (
               <li key={p.id} className="d-flex align-items-center justify-content-between gap-2 border-bottom pb-2">
                 <Link to={`/jugadores/${p.id}`} className="fw-semibold text-decoration-none">{p.name} <span className="text-muted small fw-normal">({p.position})</span></Link>
-                <button type="button" className="btn btn-sm btn-outline-dark" onClick={guarded(() => setPlacing(p))}>
-                  {!canManage && <Lock size={14} className="me-1" />} Asignar a un equipo
-                </button>
+                {canManage && (<button type="button" className="btn btn-sm btn-outline-dark" onClick={guarded(() => setPlacing(p))}>
+                   Asignar a un equipo
+                </button>)}
               </li>
             ))}
           </ul>

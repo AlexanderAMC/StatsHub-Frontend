@@ -31,20 +31,33 @@ export const PERMISSIONS = {
   SCHEDULE_MATCHES: 'partidos:programar',
   RECORD_MATCHES: 'actas:registrar',
   EXPORT: 'reportes:exportar',
+  STATS_ADVANCED: 'estadisticas:avanzadas',
+  ANALYTICS: 'analitica:predictiva',
+  OWN_TEAM: 'equipo:propio',
+  COLLECT: 'cobros:gestionar',
+  PAY_OFFICIALS: 'oficiales:liquidar',
 };
 
 const P = PERMISSIONS;
 
+// Permisos por ROL. Los planes de pago (Básico/Pro/Ultra) suman permisos: el servidor entrega los
+// permisos efectivos en /auth/me y AuthProvider los usa. Esta tabla es el respaldo sin conexión.
 export const ROLE_PERMISSIONS = {
   administrador: Object.values(PERMISSIONS),
-  organizador: [P.MANAGE_TOURNAMENTS, P.MANAGE_TEAMS, P.MANAGE_PLAYERS, P.SCHEDULE_MATCHES, P.RECORD_MATCHES, P.EXPORT],
-  entrenador: [P.MANAGE_PLAYERS, P.EXPORT],
-  arbitro: [P.RECORD_MATCHES, P.EXPORT],
-  estadigrafo: [P.RECORD_MATCHES, P.EXPORT],
-  jugador: [P.EXPORT],
-  espectador: [P.EXPORT],
+  organizador: [P.MANAGE_TOURNAMENTS, P.MANAGE_TEAMS, P.MANAGE_PLAYERS, P.SCHEDULE_MATCHES, P.RECORD_MATCHES, P.EXPORT,
+    P.STATS_ADVANCED, P.ANALYTICS, P.COLLECT, P.PAY_OFFICIALS],
+  entrenador: [P.MANAGE_PLAYERS, P.EXPORT, P.STATS_ADVANCED, P.ANALYTICS, P.OWN_TEAM],
+  arbitro: [P.RECORD_MATCHES, P.STATS_ADVANCED],
+  estadigrafo: [P.RECORD_MATCHES, P.STATS_ADVANCED],
+  jugador: [],
+  espectador: [],
   invitado: [],
 };
+
+export const PLAN_LABELS = { BASICO: 'Plan Básico', PRO: 'Plan Pro', ULTRA: 'Plan Ultra' };
+
+// Administración y organización de la liga (rol): alcance sobre todos los torneos.
+export const isLeagueManagerRole = (role) => role === ROLES.ADMIN || role === ROLES.ORGANIZER;
 
 const VIEW = 'Ver marcadores, calendario, posiciones y estadísticas';
 

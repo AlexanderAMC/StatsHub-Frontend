@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowLeftRight, CreditCard, ImageUp, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, CreditCard, ImageUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import TeamLogo, { RegistrationBadge } from '../components/TeamLogo';
 import ExportButtons from '../components/ExportButtons';
@@ -134,12 +134,12 @@ export default function EquipoDetalle() {
                 <CreditCard size={16} /> {paying ? 'Generando…' : 'Generar cobro'}
               </button>
             )}
-            <button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guard(canEditTeam, () => setTeamModal(true), 'editar equipos')}>
-              {canEditTeam ? <Pencil size={16} /> : <Lock size={16} />} Editar equipo
-            </button>
-            <button type="button" className="btn text-white fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#1E0A3C' }} onClick={guard(canEditPlayers, () => setPlayerModal({ player: null }), 'agregar jugadores a este equipo')}>
-              {canEditPlayers ? <Plus size={16} /> : <Lock size={16} />} Agregar jugador
-            </button>
+            {canEditTeam && (<button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guard(canEditTeam, () => setTeamModal(true), 'editar equipos')}>
+              <Pencil size={16} /> Editar equipo
+            </button>)}
+            {canEditPlayers && (<button type="button" className="btn text-white fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#1E0A3C' }} onClick={guard(canEditPlayers, () => setPlayerModal({ player: null }), 'agregar jugadores a este equipo')}>
+              <Plus size={16} /> Agregar jugador
+            </button>)}
           </div>
         </div>
 
@@ -206,15 +206,15 @@ export default function EquipoDetalle() {
                       <td className="text-center">{s.amarillas}</td>
                       <td className="text-center">{s.rojas}</td>
                       <td className="text-end text-nowrap no-print">
-                        <button type="button" className="btn btn-sm btn-outline-dark me-1" onClick={guard(canEditPlayers, () => setPlayerModal({ player: p }), 'editar jugadores de este equipo')} aria-label={`Editar ${p.name}`}>
-                          {canEditPlayers ? <Pencil size={14} /> : <Lock size={14} />}
-                        </button>
-                        <button type="button" className="btn btn-sm btn-outline-dark me-1" onClick={guard(canEditTeam, () => setTransferring(p), 'transferir jugadores')} aria-label={`Transferir a ${p.name}`}>
-                          {canEditTeam ? <ArrowLeftRight size={14} /> : <Lock size={14} />}
-                        </button>
-                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={guard(canEditPlayers, () => handleRemovePlayer(p), 'eliminar jugadores de este equipo')} aria-label={`Eliminar a ${p.name}`}>
-                          {canEditPlayers ? <Trash2 size={14} /> : <Lock size={14} />}
-                        </button>
+                        {canEditPlayers && (<button type="button" className="btn btn-sm btn-outline-dark me-1" onClick={guard(canEditPlayers, () => setPlayerModal({ player: p }), 'editar jugadores de este equipo')} aria-label={`Editar ${p.name}`}>
+                          <Pencil size={14} />
+                        </button>)}
+                        {canEditTeam && (<button type="button" className="btn btn-sm btn-outline-dark me-1" onClick={guard(canEditTeam, () => setTransferring(p), 'transferir jugadores')} aria-label={`Transferir a ${p.name}`}>
+                          <ArrowLeftRight size={14} />
+                        </button>)}
+                        {canEditPlayers && (<button type="button" className="btn btn-sm btn-outline-danger" onClick={guard(canEditPlayers, () => handleRemovePlayer(p), 'eliminar jugadores de este equipo')} aria-label={`Eliminar a ${p.name}`}>
+                          <Trash2 size={14} />
+                        </button>)}
                       </td>
                     </tr>
                   );

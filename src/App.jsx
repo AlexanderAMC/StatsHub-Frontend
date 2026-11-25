@@ -6,6 +6,10 @@ import DataProvider from './context/DataProvider';
 import { PERMISSIONS } from './data/users';
 import Actas from './pages/Actas';
 import Auditoria from './pages/Auditoria';
+import Cobros from './pages/Cobros';
+import MisPagos from './pages/MisPagos';
+import Oficiales from './pages/Oficiales';
+import Planes from './pages/Planes';
 import Comprobante from './pages/Comprobante';
 import Pagos from './pages/Pagos';
 import Restablecer from './pages/Restablecer';
@@ -36,7 +40,11 @@ export default function App() {
               }
             >
               <Route index element={<Dashboard />} />
-              <Route path="torneos" element={<Torneos />} />
+              <Route path="torneos" element={<RequirePermission permission={PERMISSIONS.MANAGE_TOURNAMENTS} feature="gestionar torneos"><Torneos /></RequirePermission>} />
+              <Route path="planes" element={<Planes />} />
+              <Route path="cobros" element={<Cobros />} />
+              <Route path="mis-pagos" element={<MisPagos />} />
+              <Route path="oficiales" element={<RequirePermission permission={PERMISSIONS.PAY_OFFICIALS} feature="liquidar pagos a oficiales"><Oficiales /></RequirePermission>} />
               <Route path="equipos" element={<Equipos />} />
               <Route path="equipos/:teamId" element={<EquipoDetalle />} />
               <Route path="jugadores/:playerId" element={<JugadorDetalle />} />
@@ -61,9 +69,7 @@ export default function App() {
               <Route
                 path="pagos"
                 element={
-                  <RequirePermission permission={PERMISSIONS.MANAGE_TEAMS} feature="ver los pagos de inscripción">
-                    <Pagos />
-                  </RequirePermission>
+                  <Pagos />
                 }
               />
               {/* El resultado de Flow y el comprobante: el backend valida que el usuario pueda verlo. */}

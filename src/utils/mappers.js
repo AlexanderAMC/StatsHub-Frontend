@@ -34,6 +34,7 @@ export const mapTournament = (t) => ({
   status: TOURNAMENT_STATUS_MAP[t.estado] ?? t.estado,
   teams: t.cupos ?? t.cantidad_equipos ?? 0,
   registeredTeams: t.cantidad_equipos ?? 0,
+  ownerId: t.organizador_id ?? null,
   format: t.formato ?? 'LIGA',
   fee: t.costo_inscripcion ?? null,
   startDate: t.fecha_inicio,
@@ -63,7 +64,13 @@ export const mapTeam = (e) => ({
   registration: e.estado_inscripcion ?? null,
 });
 
-export const teamToApi = (d) => ({ nombre: d.name, torneo_id: d.tournamentId, entrenador: d.coach || null });
+export const teamToApi = (d) => ({
+  nombre: d.name,
+  torneo_id: d.tournamentId,
+  entrenador: d.coach || null,
+  // Cuenta del entrenador (plan Pro): vacío = no cambia.
+  ...(d.coachEmail ? { entrenador_correo: d.coachEmail } : {}),
+});
 
 export const mapMatch = (p) => ({
   id: p.id,
@@ -82,6 +89,8 @@ export const mapMatch = (p) => ({
   minute: p.minuto ?? 0,
   lineup: p.alineacion ?? null,
   closedAt: p.acta_cerrada_en ?? null,
+  validatedAt: p.acta_validada_en ?? null,
+  doubleRole: Boolean(p.doble_funcion),
 });
 
 export const matchToApi = (d) => ({
@@ -94,6 +103,7 @@ export const matchToApi = (d) => ({
   cancha: d.venue,
   arbitro_id: d.refereeId || null,
   estadigrafo_id: d.statsKeeperId || null,
+  doble_funcion: Boolean(d.doubleRole),
 });
 
 export const mapPlayer = (j) => ({

@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Offcanvas } from 'react-bootstrap';
-import { LogIn, LogOut, Lock } from 'lucide-react';
+import { LogIn, LogOut } from 'lucide-react';
 import logoStatsHub from '../assets/logo.jpg';
 import { NAV_ITEMS } from '../data/navItems';
 import { ROLE_LABELS } from '../data/users';
@@ -27,9 +27,13 @@ function SidebarContent({ onNavigate, onOpenProfile }) {
 
       <nav aria-label="Navegación principal">
         <ul className="nav flex-column mb-auto gap-2">
-          {NAV_ITEMS.map(({ path, label, icon: Icon, permission, hideIfDenied }) => {
-            const locked = permission && !can(permission);
-            if (locked && hideIfDenied) return null;
+          {NAV_ITEMS.map(({ path, label, icon: Icon, permission, anyOf, roles, members }) => {
+            const locked = !((!permission || can(permission))
+              && (!anyOf || anyOf.some((p) => can(p)))
+              && (!roles || roles.includes(user?.role))
+              && (!members || (user && !isGuest)));
+            // Cada perfil ve solo lo suyo: sin candados en el menú.
+            if (locked) return null;
             return (
               <li className="nav-item" key={path}>
                 <NavLink
@@ -43,13 +47,6 @@ function SidebarContent({ onNavigate, onOpenProfile }) {
                   }
                 >
                   <Icon size={20} /> {label}
-                  {locked && (
-                    <Lock
-                      size={14}
-                      className="ms-auto flex-shrink-0"
-                      aria-label={isGuest ? 'Requiere iniciar sesión' : 'Sin permiso'}
-                    />
-                  )}
                 </NavLink>
               </li>
             );

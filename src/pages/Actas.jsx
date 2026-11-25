@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PlayCircle, Undo2 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import EventModal from '../components/EventModal';
+import ActaValidationPanel from '../components/ActaValidationPanel';
 import StartMatchModal from '../components/StartMatchModal';
 import { EVENT_TYPES, MATCH_STATUS, MAX_MINUTE } from '../data/constants';
 import { useData } from '../hooks/useData';
@@ -103,6 +104,7 @@ export default function Actas() {
           <EmptyState title="No hay partidos en vivo">Inicia uno de los partidos programados para abrir su acta digital.</EmptyState>
         </div>
         {startPanel}
+        <ActaValidationPanel />
         {startModal}
       </div>
     );
@@ -204,6 +206,7 @@ export default function Actas() {
       </div>
 
       {startPanel}
+      <ActaValidationPanel />
       {startModal}
       {draft && (
         <EventModal

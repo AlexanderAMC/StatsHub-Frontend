@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, CalendarPlus, Lock, Pencil, PlayCircle, Plus, Trash2 } from 'lucide-react';
+import { Bell, CalendarPlus, Pencil, PlayCircle, Plus, Trash2 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import FixtureModal from '../components/FixtureModal';
 import MatchFormModal from '../components/MatchFormModal';
@@ -102,12 +102,12 @@ export default function Calendario() {
             <p className="text-muted small mb-0">Horarios, canchas, árbitros y resultados de cada jornada.</p>
           </div>
           <div className="d-flex flex-wrap gap-2 no-print">
-            <button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guard(canSchedule, () => setShowFixture(true), 'generar el fixture de un torneo')}>
-              {canSchedule ? <CalendarPlus size={18} /> : <Lock size={18} />} Generar fixture
-            </button>
-            <button type="button" className="btn text-white fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#1E0A3C' }} onClick={guard(canSchedule, () => setMatchModal({ match: null }), 'programar partidos')}>
-              {canSchedule ? <Plus size={18} /> : <Lock size={18} />} Programar partido
-            </button>
+            {canSchedule && (<button type="button" className="btn btn-outline-dark d-flex align-items-center gap-2" onClick={guard(canSchedule, () => setShowFixture(true), 'generar el fixture de un torneo')}>
+              <CalendarPlus size={18} /> Generar fixture
+            </button>)}
+            {canSchedule && (<button type="button" className="btn text-white fw-bold d-flex align-items-center gap-2" style={{ backgroundColor: '#1E0A3C' }} onClick={guard(canSchedule, () => setMatchModal({ match: null }), 'programar partidos')}>
+              <Plus size={18} /> Programar partido
+            </button>)}
           </div>
         </div>
 
@@ -144,7 +144,8 @@ export default function Calendario() {
             <h3 className="h6 fw-bold text-uppercase text-muted mb-2" style={{ letterSpacing: '0.08em' }}>{formatDate(group.date)}</h3>
             <div className="d-flex flex-column gap-2">
               {group.items.map((m) => {
-                const prediction = m.status === SCHEDULED ? predictionFor(m) : null;
+                // Predicción con ML: plan Pro o superior.
+                const prediction = m.status === SCHEDULED && can(PERMISSIONS.ANALYTICS) ? predictionFor(m) : null;
                 return (
                   <div key={m.id} className="card border-0 shadow-sm rounded-3 p-3 bg-white">
                     <div className="row g-2 align-items-center">
@@ -164,23 +165,23 @@ export default function Calendario() {
                         <div className="d-flex flex-wrap gap-1 no-print">
                           {m.status === SCHEDULED && (
                             <>
-                              <button type="button" className="btn btn-sm btn-outline-dark d-flex align-items-center gap-1" onClick={guard(canRecord, () => setStarting(m), 'iniciar partidos y registrar actas')}>
-                                {canRecord ? <PlayCircle size={14} /> : <Lock size={14} />} Iniciar
-                              </button>
-                              <button type="button" className="btn btn-sm btn-outline-dark" onClick={guard(canSchedule, () => setMatchModal({ match: m }), 'editar partidos')} aria-label="Editar partido">
-                                {canSchedule ? <Pencil size={14} /> : <Lock size={14} />}
-                              </button>
-                              <button type="button" className="btn btn-sm btn-outline-dark" onClick={guard(canSchedule, () => handleReminder(m), 'enviar recordatorios')} aria-label="Enviar recordatorio">
-                                {canSchedule ? <Bell size={14} /> : <Lock size={14} />}
-                              </button>
-                              <button type="button" className="btn btn-sm btn-outline-danger" onClick={guard(canSchedule, () => handleCancel(m), 'suspender partidos')} aria-label="Suspender partido">
-                                {canSchedule ? <Trash2 size={14} /> : <Lock size={14} />}
-                              </button>
+                              {canRecord && (<button type="button" className="btn btn-sm btn-outline-dark d-flex align-items-center gap-1" onClick={guard(canRecord, () => setStarting(m), 'iniciar partidos y registrar actas')}>
+                                <PlayCircle size={14} /> Iniciar
+                              </button>)}
+                              {canSchedule && (<button type="button" className="btn btn-sm btn-outline-dark" onClick={guard(canSchedule, () => setMatchModal({ match: m }), 'editar partidos')} aria-label="Editar partido">
+                                <Pencil size={14} />
+                              </button>)}
+                              {canSchedule && (<button type="button" className="btn btn-sm btn-outline-dark" onClick={guard(canSchedule, () => handleReminder(m), 'enviar recordatorios')} aria-label="Enviar recordatorio">
+                                <Bell size={14} />
+                              </button>)}
+                              {canSchedule && (<button type="button" className="btn btn-sm btn-outline-danger" onClick={guard(canSchedule, () => handleCancel(m), 'suspender partidos')} aria-label="Suspender partido">
+                                <Trash2 size={14} />
+                              </button>)}
                             </>
                           )}
-                          {m.status === LIVE && (
+                          {m.status === LIVE && canRecord && (
                             <Link to={`/actas?partido=${m.id}`} className="btn btn-sm btn-outline-dark d-flex align-items-center gap-1">
-                              {!canRecord && <Lock size={14} />} Abrir acta
+                               Abrir acta
                             </Link>
                           )}
                         </div>

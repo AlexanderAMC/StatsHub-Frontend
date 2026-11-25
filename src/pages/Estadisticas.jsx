@@ -4,6 +4,7 @@ import EmptyState from '../components/EmptyState';
 import ExportButtons from '../components/ExportButtons';
 import { MATCH_STATUS } from '../data/constants';
 import { useData } from '../hooks/useData';
+import { useAuth } from '../hooks/useAuth';
 import { downloadCsv } from '../utils/csv';
 import { byDateTime, formatDateShort } from '../utils/dates';
 import { predictMatch } from '../utils/predict';
@@ -11,11 +12,11 @@ import { computePlayerStats, computeStandings, teamForm, teamTrend } from '../ut
 
 const VIEWS = [
   { id: 'posiciones', label: 'Posiciones' },
-  { id: 'goleadores', label: 'Goleadores' },
-  { id: 'asistencias', label: 'Asistencias' },
-  { id: 'rendimiento', label: 'Rendimiento' },
-  { id: 'fairplay', label: 'Fair Play' },
-  { id: 'prediccion', label: 'Predicción' },
+  { id: 'goleadores', label: 'Goleadores', perm: 'estadisticas:avanzadas' },
+  { id: 'asistencias', label: 'Asistencias', perm: 'estadisticas:avanzadas' },
+  { id: 'rendimiento', label: 'Rendimiento', perm: 'estadisticas:avanzadas' },
+  { id: 'fairplay', label: 'Fair Play', perm: 'estadisticas:avanzadas' },
+  { id: 'prediccion', label: 'Predicción', perm: 'analitica:predictiva' },
 ];
 
 // RF-35: ranking de Fair Play (amarilla = 1 punto, roja = 3). Menos puntos = mejor posición.
@@ -210,9 +211,12 @@ function PredictionTable({ items, teamName }) {
 
 export default function Estadisticas() {
   const { tournaments, teams, players, matches, events, predictions, teamName } = useData();
+  const { can } = useAuth();
   const [params, setParams] = useSearchParams();
 
-  const view = VIEWS.find((v) => v.id === params.get('vista'))?.id ?? 'posiciones';
+  // Pestañas según el plan del usuario: sin plan solo Posiciones (sin candados: lo demás no aparece).
+  const views = VIEWS.filter((v) => !v.perm || can(v.perm));
+  const view = views.find((v) => v.id === params.get('vista'))?.id ?? 'posiciones';
   const requestedId = Number(params.get('torneo'));
   const selected = tournaments.find((t) => t.id === requestedId) ?? tournaments.find((t) => t.status === 'En Curso') ?? tournaments[0];
   const tournamentId = selected?.id;
@@ -312,7 +316,7 @@ export default function Estadisticas() {
       </div>
 
       <ul className="nav nav-tabs mb-3 no-print" role="tablist">
-        {VIEWS.map((v) => (
+        {views.map((v) => (
           <li className="nav-item" key={v.id} role="presentation">
             <button type="button" role="tab" aria-selected={view === v.id} className={`nav-link ${view === v.id ? 'active fw-bold' : 'text-secondary'}`} onClick={() => update({ vista: v.id })}>
               {v.label}
@@ -320,6 +324,10 @@ export default function Estadisticas() {
           </li>
         ))}
       </ul>
+
+      {views.length < VIEWS.length && (
+        <p className="small text-muted mb-3">Goleadores, asistencias, Fair Play, rendimiento y predicciones están disponibles con los <Link to="/planes">planes StatsHub</Link>.</p>
+      )}
 
       {view === 'posiciones' && (
         <>
