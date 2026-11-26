@@ -52,7 +52,7 @@ export default function EquipoDetalle() {
   const stats = computePlayerStats(players, matches, events);
 
   const finished = matches.filter((m) => m.tournamentId === team.tournamentId && m.status === MATCH_STATUS.FINISHED);
-  const standings = computeStandings(teams.filter((t) => t.tournamentId === team.tournamentId), finished);
+  const standings = computeStandings(teams.filter((t) => t.tournamentId === team.tournamentId), finished, tournament?.sport);
   const position = standings.findIndex((r) => r.teamId === id);
   const row = standings[position];
   const form = teamForm(id, finished);
@@ -230,7 +230,7 @@ export default function EquipoDetalle() {
         <TeamModal team={team} tournaments={tournaments} teams={teams} onSave={async (data) => { const r = await updateTeam(id, data); if (r.ok) setTeamModal(false); else window.alert(r.error); }} onHide={() => setTeamModal(false)} />
       )}
       {playerModal && (
-        <PlayerModal key={playerModal.player?.id ?? 'nuevo'} player={playerModal.player} teamPlayers={roster} onSave={handleSavePlayer} onHide={() => setPlayerModal(null)} />
+        <PlayerModal key={playerModal.player?.id ?? 'nuevo'} sport={tournament?.sport} player={playerModal.player} teamPlayers={roster} onSave={handleSavePlayer} onHide={() => setPlayerModal(null)} />
       )}
       {transferring && (
         <TransferModal

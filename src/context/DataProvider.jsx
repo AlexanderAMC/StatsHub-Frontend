@@ -184,10 +184,12 @@ export default function DataProvider({ children }) {
     },
 
     startMatch: (matchId, lineup) => run(() => api.iniciarPartido(matchId, lineup), loadMatches),
-    setMinute: (matchId, value) => {
+    // period: cuarto del básquetbol (en fútbol no se envía).
+    setMinute: (matchId, value, period) => {
       const minute = Math.min(130, Math.max(0, Math.trunc(Number(value) || 0)));
-      setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, minute } : m))); // respuesta inmediata
-      return run(() => api.setMinuto(matchId, minute));
+      const patch = period ? { minute, period } : { minute };
+      setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, ...patch } : m))); // respuesta inmediata
+      return run(() => api.setMinuto(matchId, minute, period), period ? loadMatches : undefined);
     },
     addEvent: (matchId, data) => run(() => api.addEvento(matchId, eventToApi(data)), loadMatches),
     undoLastEvent: (matchId) => run(() => api.deshacerEvento(matchId), loadMatches),

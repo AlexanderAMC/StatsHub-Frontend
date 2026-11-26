@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Form } from 'react-bootstrap';
 import FormModal, { Field } from './FormModal';
-import { TOURNAMENT_STATUSES } from '../data/constants';
+import { SPORTS, SPORT_LABELS, TOURNAMENT_STATUSES } from '../data/constants';
 
 const MAX_TEAMS = 64;
 
@@ -21,10 +21,11 @@ function validate(values, existingNames) {
 }
 
 // Se monta solo cuando está abierto: cada apertura parte con el formulario limpio.
-export default function TournamentModal({ tournament, existingNames, categories, onSave, onHide }) {
+export default function TournamentModal({ tournament, existingNames, categories, onSave, onHide, sportLocked = false }) {
   const isEditing = Boolean(tournament);
   const [values, setValues] = useState({
     name: tournament?.name ?? '',
+    sport: tournament?.sport ?? SPORTS.BASKETBALL,
     category: tournament?.category ?? categories[0] ?? '',
     teams: tournament?.teams ?? 10,
     status: tournament?.status ?? 'Planificado',
@@ -43,6 +44,7 @@ export default function TournamentModal({ tournament, existingNames, categories,
     if (Object.keys(found).length > 0) return;
     onSave({
       name: values.name.trim(),
+      sport: values.sport,
       category: values.category,
       teams: Number(values.teams),
       status: values.status,
@@ -61,6 +63,20 @@ export default function TournamentModal({ tournament, existingNames, categories,
     >
       <Field id="torneo-nombre" label="Nombre del torneo" error={errors.name}>
         <Form.Control type="text" placeholder="Ej: Copa Verano 2026" value={values.name} onChange={setField('name')} isInvalid={Boolean(errors.name)} autoFocus />
+      </Field>
+
+      <Field id="torneo-deporte" label="Deporte" hint={sportLocked ? 'El torneo ya tiene partidos: el deporte no se puede cambiar.' : 'Define el acta, la tabla y las estadísticas del torneo.'}>
+        <div className="d-flex gap-2" role="radiogroup" aria-label="Deporte">
+          {[SPORTS.BASKETBALL, SPORTS.FOOTBALL].map((sport) => (
+            <button
+              key={sport} type="button" role="radio" aria-checked={values.sport === sport} disabled={sportLocked}
+              className={`btn flex-fill fw-semibold ${values.sport === sport ? 'btn-dark' : 'btn-outline-dark'}`}
+              onClick={() => setValues((prev) => ({ ...prev, sport }))}
+            >
+              {sport === SPORTS.BASKETBALL ? '🏀' : '⚽'} {SPORT_LABELS[sport]}
+            </button>
+          ))}
+        </div>
       </Field>
 
       <div className="row g-3">

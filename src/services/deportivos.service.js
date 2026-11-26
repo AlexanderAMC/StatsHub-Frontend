@@ -48,7 +48,8 @@ export const deportivosService = {
   recordatorioPartido: (id) => fetchApi(`/partidos/${id}/recordatorio`, { method: 'POST' }),
 
   iniciarPartido: (id, alineacion) => fetchApi(`/partidos/${id}/iniciar`, json('POST', { alineacion })),
-  setMinuto: (id, minuto) => fetchApi(`/partidos/${id}/minuto`, json('PUT', { minuto })),
+  setMinuto: (id, minuto, periodo) => fetchApi(`/partidos/${id}/minuto`, json('PUT', periodo ? { minuto, periodo } : { minuto })),
+  getRebotes: (torneoId) => fetchApi(`/estadisticas/rebotes${torneoId ? `?torneo_id=${torneoId}` : ''}`),
   addEvento: (id, data) => fetchApi(`/partidos/${id}/eventos`, json('POST', data)),
   deshacerEvento: (id) => fetchApi(`/partidos/${id}/eventos/ultimo`, { method: 'DELETE' }),
   finalizarPartido: (id) => fetchApi(`/partidos/${id}/finalizar`, { method: 'POST' }),

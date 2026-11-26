@@ -19,7 +19,11 @@ const MATCH_STATUS_MAP = {
   SUSPENDIDO: MATCH_STATUS.SUSPENDED,
 };
 
-const EVENT_TYPE_MAP = { GOL: 'gol', AMARILLA: 'amarilla', ROJA: 'roja', SUSTITUCION: 'sustitucion', LESION: 'lesion' };
+const EVENT_TYPE_MAP = {
+  GOL: 'gol', AMARILLA: 'amarilla', ROJA: 'roja', SUSTITUCION: 'sustitucion', LESION: 'lesion',
+  PUNTO_1: 'punto1', PUNTO_2: 'punto2', PUNTO_3: 'punto3', REBOTE: 'rebote',
+  FALTA: 'falta', FALTA_TECNICA: 'tecnica', FALTA_ANTIDEPORTIVA: 'antideportiva', TIEMPO_MUERTO: 'tiempo',
+};
 const EVENT_TYPE_TO_API = Object.fromEntries(Object.entries(EVENT_TYPE_MAP).map(([k, v]) => [v, k]));
 
 // La BD guarda posiciones como texto libre (antes en mayúsculas): se muestran con formato de título.
@@ -29,6 +33,7 @@ const absoluteUrl = (url) => (url && url.startsWith('/') ? `${API_ORIGIN}${url}`
 export const mapTournament = (t) => ({
   id: t.id,
   name: t.nombre,
+  sport: t.deporte ?? 'BASQUETBOL',
   category: t.categoria,
   categoryId: t.categoria_id,
   status: TOURNAMENT_STATUS_MAP[t.estado] ?? t.estado,
@@ -44,6 +49,7 @@ export const mapTournament = (t) => ({
 
 export const tournamentToApi = (d) => ({
   nombre: d.name,
+  deporte: d.sport ?? 'BASQUETBOL',
   categoria: d.category,
   cupos: Number(d.teams),
   estado: TOURNAMENT_STATUS_TO_API[d.status] ?? 'PLANIFICADO',
@@ -87,6 +93,8 @@ export const mapMatch = (p) => ({
   statsKeeperId: p.estadigrafo_id ?? null,
   round: p.jornada ?? 1,
   minute: p.minuto ?? 0,
+  period: p.periodo ?? 1,
+  sport: p.deporte ?? 'FUTBOL',
   lineup: p.alineacion ?? null,
   closedAt: p.acta_cerrada_en ?? null,
   validatedAt: p.acta_validada_en ?? null,
@@ -129,6 +137,7 @@ export const mapEvent = (e) => ({
   id: e.id,
   matchId: e.partido_id,
   minute: e.minuto,
+  period: e.periodo ?? null,
   type: EVENT_TYPE_MAP[e.tipo_evento] ?? e.tipo_evento?.toLowerCase(),
   side: e.lado === 'VISITA' ? 'away' : 'home',
   playerId: e.jugador_id,
@@ -140,7 +149,7 @@ export const mapEvent = (e) => ({
 export const eventToApi = (d) => ({
   tipo: EVENT_TYPE_TO_API[d.type],
   lado: d.side === 'away' ? 'VISITA' : 'LOCAL',
-  jugador_id: d.playerId,
+  jugador_id: d.playerId ?? null,
   asistencia_id: d.assistId ?? null,
   relacionado_id: d.relatedId ?? null,
 });

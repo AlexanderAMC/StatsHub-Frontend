@@ -4,6 +4,7 @@ import { User } from 'lucide-react';
 import { formatDateShort } from '../utils/dates';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_ABILITIES, ROLE_LABELS } from '../data/users';
+import { passwordProblem } from '../utils/password';
 
 // Privacidad (Ley 19.628), notificaciones (RF-45) y cambio de contraseña.
 function AccountSettings() {
@@ -17,7 +18,8 @@ function AccountSettings() {
 
   const handlePassword = async (e) => {
     e.preventDefault();
-    if (next.length < 8) return setMessage({ type: 'danger', text: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+    const problem = passwordProblem(next);
+    if (problem) return setMessage({ type: 'danger', text: problem });
     setBusy(true);
     const result = await changePassword(current, next);
     setBusy(false);

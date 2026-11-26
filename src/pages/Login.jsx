@@ -320,6 +320,7 @@ function RecoverForm() {
     setError('');
     setStatus('loading');
     const result = await recoverPassword(email.trim());
+    // El enlace solo llega al correo del titular: nunca se entrega en el navegador.
     if (result.ok) setStatus('sent');
     else {
       setStatus('idle');
@@ -345,7 +346,7 @@ function RecoverForm() {
       <SubmitButton busy={status === 'loading'} busyLabel="Enviando…">
         Enviar instrucciones <ArrowRight size={18} aria-hidden="true" />
       </SubmitButton>
-      <p className="small text-muted text-center mt-2 mb-0">El enlace para crear una nueva contraseña es válido por 1 hora.</p>
+      <p className="small text-muted text-center mt-2 mb-0">El enlace llega solo a tu correo, sirve una vez y vence en 30 minutos.</p>
     </form>
   );
 }

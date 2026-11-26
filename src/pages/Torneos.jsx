@@ -5,14 +5,14 @@ import CategoriesModal from '../components/CategoriesModal';
 import LeagueModal from '../components/LeagueModal';
 import RestrictedActionModal from '../components/RestrictedActionModal';
 import TournamentModal from '../components/TournamentModal';
-import { STATUS_BADGE, TOURNAMENT_STATUSES } from '../data/constants';
+import { SPORT_LABELS, STATUS_BADGE, TOURNAMENT_STATUSES, isBasketball } from '../data/constants';
 import { PERMISSIONS, isLeagueManagerRole } from '../data/users';
 import { useAuth } from '../hooks/useAuth';
 import { useData } from '../hooks/useData';
 import { formatDateShort } from '../utils/dates';
 
 export default function Torneos() {
-  const { tournaments, categories, teams, addTournament, updateTournament, removeTournament } = useData();
+  const { tournaments, categories, teams, matches, addTournament, updateTournament, removeTournament } = useData();
   const { can, user } = useAuth();
   const canManage = can(PERMISSIONS.MANAGE_TOURNAMENTS);
 
@@ -106,7 +106,13 @@ export default function Torneos() {
             )}
             {visible.map((t) => (
               <tr key={t.id}>
-                <td className="fw-bold text-dark">{t.name}<span className="d-block small text-muted fw-normal">Temporada {t.season}</span></td>
+                <td className="fw-bold text-dark">
+                  {t.name}
+                  <span className="d-block small text-muted fw-normal">
+                    <span className={`badge rounded-pill me-1 ${isBasketball(t.sport) ? 'text-bg-warning' : 'text-bg-success'}`}>{isBasketball(t.sport) ? '🏀' : '⚽'} {SPORT_LABELS[t.sport]}</span>
+                    Temporada {t.season}
+                  </span>
+                </td>
                 <td className="text-secondary">{t.category}</td>
                 <td className="small text-secondary text-nowrap">{formatDateShort(t.startDate)}<br />{formatDateShort(t.endDate)}</td>
                 <td className="text-center fw-medium">{teams.filter((team) => team.tournamentId === t.id).length} / {t.teams}</td>
@@ -136,6 +142,7 @@ export default function Torneos() {
           tournament={modal.tournament}
           existingNames={tournaments.filter((t) => t.id !== modal.tournament?.id).map((t) => t.name)}
           categories={categories}
+          sportLocked={Boolean(modal.tournament) && matches.some((m) => m.tournamentId === modal.tournament.id)}
           onSave={handleSave}
           onHide={() => setModal(null)}
         />

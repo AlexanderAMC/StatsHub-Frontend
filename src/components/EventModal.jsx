@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Form } from 'react-bootstrap';
 import FormModal, { Field } from './FormModal';
-import { EVENT_TYPES } from '../data/constants';
+import { EVENT_TYPES, isBasketball, periodLabel } from '../data/constants';
 
 // Registra un evento del acta eligiendo a los jugadores del plantel convocado.
 export default function EventModal({ match, side, type, players, teamName, onSave, onHide }) {
@@ -19,27 +19,30 @@ export default function EventModal({ match, side, type, players, teamName, onSav
   const label = (p) => `#${p.number} ${p.name}`;
   const isSub = type === 'sustitucion';
   const isGoal = type === 'gol';
+  const basket = isBasketball(match.sport);
+  const scores = ['gol', 'punto1', 'punto2', 'punto3'].includes(type);
+  const assistable = ['gol', 'punto2', 'punto3'].includes(type);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const found = {};
     if (!playerId) found.playerId = isSub ? 'Elige quién sale.' : 'Elige al jugador.';
     if (isSub && !relatedId) found.relatedId = 'Elige quién entra.';
-    if (isGoal && assistId && assistId === playerId) found.assistId = 'El asistente debe ser otro jugador.';
+    if (assistable && assistId && assistId === playerId) found.assistId = 'El asistente debe ser otro jugador.';
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     onSave({
       type,
       side,
       playerId: Number(playerId),
-      assistId: isGoal && assistId ? Number(assistId) : null,
+      assistId: assistable && assistId ? Number(assistId) : null,
       relatedId: isSub ? Number(relatedId) : null,
     });
   };
 
   return (
     <FormModal title={`${EVENT_TYPES[type].label}: ${teamName(teamId)}`} onHide={onHide} onSubmit={handleSubmit} submitLabel="Registrar">
-      <Field id="evento-jugador" label={isSub ? 'Jugador que sale' : isGoal ? 'Autor del gol' : 'Jugador'} error={errors.playerId}>
+      <Field id="evento-jugador" label={isSub ? 'Jugador que sale' : isGoal ? 'Autor del gol' : scores ? 'Anotador' : 'Jugador'} error={errors.playerId}>
         <Form.Select value={playerId} onChange={(e) => setPlayerId(e.target.value)} isInvalid={Boolean(errors.playerId)} autoFocus>
           <option value="">Selecciona un jugador</option>
           {onField.map((p) => (
@@ -48,7 +51,7 @@ export default function EventModal({ match, side, type, players, teamName, onSav
         </Form.Select>
       </Field>
 
-      {isGoal && (
+      {assistable && (
         <Field id="evento-asistente" label="Asistencia (opcional)" error={errors.assistId}>
           <Form.Select value={assistId} onChange={(e) => setAssistId(e.target.value)} isInvalid={Boolean(errors.assistId)}>
             <option value="">Sin asistencia</option>
@@ -60,7 +63,7 @@ export default function EventModal({ match, side, type, players, teamName, onSav
       )}
 
       {isSub && (
-        <Field id="evento-entra" label="Jugador que entra" error={errors.relatedId} hint={bench.length === 0 ? 'No quedan jugadores en el banco.' : undefined}>
+        <Field id="evento-entra" label="Jugador que entra" error={errors.relatedId} hint={bench.length === 0 ? 'No quedan jugadores en el banco.' : basket ? 'En básquetbol los cambios son ilimitados y se puede volver a entrar.' : undefined}>
           <Form.Select value={relatedId} onChange={(e) => setRelatedId(e.target.value)} isInvalid={Boolean(errors.relatedId)} disabled={bench.length === 0}>
             <option value="">Selecciona un jugador</option>
             {bench.map((p) => (
@@ -70,7 +73,9 @@ export default function EventModal({ match, side, type, players, teamName, onSav
         </Field>
       )}
 
-      <p className="text-muted small mb-0">Se registra en el minuto {match.minute}&apos; del partido.</p>
+      <p className="text-muted small mb-0">
+        {basket ? `Se registra en el minuto ${match.minute} del ${periodLabel(match.period)}.` : `Se registra en el minuto ${match.minute}' del partido.`}
+      </p>
     </FormModal>
   );
 }

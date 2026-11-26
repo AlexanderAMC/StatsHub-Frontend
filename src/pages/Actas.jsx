@@ -5,12 +5,12 @@ import EmptyState from '../components/EmptyState';
 import EventModal from '../components/EventModal';
 import ActaValidationPanel from '../components/ActaValidationPanel';
 import StartMatchModal from '../components/StartMatchModal';
-import { EVENT_TYPES, MATCH_STATUS, MAX_MINUTE } from '../data/constants';
+import { BASKETBALL, EVENT_TYPES, MATCH_STATUS, MAX_MINUTE, isBasketball, periodLabel } from '../data/constants';
 import { useData } from '../hooks/useData';
 import { byDateTime, formatDateShort } from '../utils/dates';
-import { formatEvent } from '../utils/events';
+import { basketballFouls, formatEvent, teamFoulsInPeriod } from '../utils/events';
 
-const EVENT_BUTTONS = [
+const FOOTBALL_BUTTONS = [
   { type: 'gol', label: '+ Registrar gol', cls: 'btn-success' },
   { type: 'amarilla', label: '+ Tarjeta amarilla', cls: 'btn-warning text-dark' },
   { type: 'roja', label: '+ Tarjeta roja', cls: 'btn-danger' },
@@ -18,12 +18,26 @@ const EVENT_BUTTONS = [
   { type: 'lesion', label: '+ Lesión', cls: 'btn-secondary' },
 ];
 
+const BASKETBALL_BUTTONS = [
+  { type: 'punto1', label: '+1 Tiro libre', cls: 'btn-success' },
+  { type: 'punto2', label: '+2 Doble', cls: 'btn-success' },
+  { type: 'punto3', label: '+3 Triple', cls: 'btn-success' },
+  { type: 'rebote', label: '+ Rebote', cls: 'btn-info text-dark' },
+  { type: 'falta', label: '+ Falta personal', cls: 'btn-warning text-dark' },
+  { type: 'tecnica', label: '+ Falta técnica', cls: 'btn-outline-danger' },
+  { type: 'antideportiva', label: '+ Antideportiva', cls: 'btn-danger' },
+  { type: 'sustitucion', label: '+ Cambio', cls: 'btn-primary' },
+  { type: 'tiempo', label: 'Tiempo muerto', cls: 'btn-dark' },
+  { type: 'lesion', label: '+ Lesión', cls: 'btn-secondary' },
+];
+
 // Jugadores en cancha según la convocatoria y los eventos (misma regla que valida el backend).
 // "used" = quienes ya participaron: no pueden volver a entrar desde la banca.
-function onFieldLineup(match, matchEvents) {
+// En básquetbol los cambios admiten reingreso y salen de cancha los eliminados por faltas.
+function onFieldLineup(match, matchEvents, out = new Set()) {
   const lineup = { home: [...(match.lineup?.home ?? [])], away: [...(match.lineup?.away ?? [])] };
   const used = new Set([...lineup.home, ...lineup.away]);
-  [...matchEvents].sort((a, b) => a.minute - b.minute || a.id - b.id).forEach((e) => {
+  [...matchEvents].sort((a, b) => a.id - b.id).forEach((e) => {
     const side = lineup[e.side];
     if (!side) return;
     if (e.type === 'sustitucion' || e.type === 'roja') {
@@ -35,15 +49,16 @@ function onFieldLineup(match, matchEvents) {
       used.add(e.relatedId);
     }
   });
-  return { ...lineup, used: [...used] };
+  return { home: lineup.home.filter((id) => !out.has(id)), away: lineup.away.filter((id) => !out.has(id)), used: [...used] };
 }
 
-function TeamControls({ name, side, onEvent }) {
+function TeamControls({ name, side, buttons, onEvent, foulsLabel }) {
   return (
     <div className="p-3 border rounded-3 bg-white text-center h-100">
-      <h3 className="h6 fw-bold text-dark mb-3">Controles: {name}</h3>
+      <h3 className="h6 fw-bold text-dark mb-1">Controles: {name}</h3>
+      <p className="small text-muted mb-2">{foulsLabel ?? ' '}</p>
       <div className="d-flex flex-column gap-2">
-        {EVENT_BUTTONS.map((b) => (
+        {buttons.map((b) => (
           <button key={b.type} type="button" onClick={() => onEvent(b.type, side)} className={`btn btn-sm fw-bold ${b.cls}`}>
             {b.label}
           </button>
@@ -110,12 +125,30 @@ export default function Actas() {
     );
   }
 
-  const matchEvents = events.filter((e) => e.matchId === match.id).sort((a, b) => b.minute - a.minute || b.id - a.id);
-  // Quién sigue en cancha (convocados, menos los que salieron o fueron expulsados, más los que entraron).
-  const currentLineup = onFieldLineup(match, matchEvents);
+  const basket = isBasketball(match.sport);
+  const matchEvents = events.filter((e) => e.matchId === match.id).sort((a, b) => b.id - a.id);
+  const { fouls, out } = basket ? basketballFouls(matchEvents) : { fouls: new Map(), out: new Set() };
+  // Quién sigue en cancha (convocados, menos los que salieron, expulsados o eliminados, más los que entraron).
+  const currentLineup = onFieldLineup(match, matchEvents, out);
+  const maxMinute = basket ? (match.period > BASKETBALL.periods ? BASKETBALL.overtimeMinutes : BASKETBALL.periodMinutes) : MAX_MINUTE;
+  const foulsLabel = (side) => {
+    if (!basket) return null;
+    const n = teamFoulsInPeriod(matchEvents, side, match.period);
+    return `Faltas de equipo en el cuarto: ${n}${n >= BASKETBALL.teamFoulBonus ? ' (bonus: tiros libres)' : ''}`;
+  };
+  // En básquetbol cualquiera que no esté eliminado puede entrar (hay reingreso); en fútbol, no.
+  const eventPlayers = basket
+    ? players.filter((p) => !out.has(p.id))
+    : players.filter((p) => !currentLineup.used.includes(p.id) || currentLineup[draft?.side ?? 'home'].includes(p.id));
 
   const notifyError = (result) => {
     if (!result.ok) window.alert(result.error);
+  };
+
+  const handleEvent = (type, side) => {
+    // El tiempo muerto es del equipo: se registra sin elegir jugador.
+    if (type === 'tiempo') return addEvent(match.id, { type, side, playerId: null }).then(notifyError);
+    return setDraft({ type, side });
   };
 
   const handleFinish = async () => {
@@ -143,7 +176,7 @@ export default function Actas() {
             </div>
 
             <div className="p-3 p-md-4 bg-light rounded-3 border mb-3 text-center">
-              <span className="badge bg-danger mb-2">EN VIVO · minuto {match.minute}&apos;</span>
+              <span className="badge bg-danger mb-2">EN VIVO · {basket ? `${periodLabel(match.period)} · minuto ${match.minute}` : `minuto ${match.minute}'`}</span>
               <div className="d-flex align-items-center justify-content-around gap-2 my-2">
                 <div className="fw-bold fs-5 text-dark" style={{ width: '35%' }}>{teamName(match.homeId)}</div>
                 <div className="fs-1 fw-bold text-warning bg-dark px-3 px-md-4 py-1 rounded-3 shadow-sm text-nowrap">{match.scoreHome} - {match.scoreAway}</div>
@@ -152,23 +185,30 @@ export default function Actas() {
             </div>
 
             <div className="mb-3" style={{ maxWidth: '260px' }}>
-              <label htmlFor="acta-minuto" className="form-label small fw-semibold text-muted mb-1">Minuto actual</label>
+              {basket && (
+                <select className="form-select form-select-sm mb-2" aria-label="Cuarto" value={match.period} onChange={(e) => setMinute(match.id, 0, Number(e.target.value)).then(notifyError)}>
+                  {Array.from({ length: Math.max(match.period + 1, BASKETBALL.periods + 1) }, (_, i) => i + 1).map((p) => (
+                    <option key={p} value={p}>{periodLabel(p)}</option>
+                  ))}
+                </select>
+              )}
+              <label htmlFor="acta-minuto" className="form-label small fw-semibold text-muted mb-1">{basket ? 'Minuto del cuarto' : 'Minuto actual'}</label>
               <div className="input-group input-group-sm">
                 <input
-                  id="acta-minuto" type="number" min="0" max={MAX_MINUTE} className="form-control"
+                  id="acta-minuto" type="number" min="0" max={maxMinute} className="form-control"
                   key={`${match.id}-${match.minute}`} defaultValue={match.minute}
-                  onBlur={(e) => Number(e.target.value) !== match.minute && setMinute(match.id, e.target.value).then(notifyError)}
+                  onBlur={(e) => Number(e.target.value) !== match.minute && setMinute(match.id, e.target.value, basket ? match.period : undefined).then(notifyError)}
                 />
-                <button type="button" className="btn btn-outline-dark" onClick={() => setMinute(match.id, match.minute + 1).then(notifyError)}>+1 min</button>
+                <button type="button" className="btn btn-outline-dark" onClick={() => setMinute(match.id, Math.min(match.minute + 1, maxMinute), basket ? match.period : undefined).then(notifyError)}>+1 min</button>
               </div>
             </div>
 
             <div className="row g-3">
               <div className="col-12 col-sm-6">
-                <TeamControls name={teamName(match.homeId)} side="home" onEvent={(type, side) => setDraft({ type, side })} />
+                <TeamControls name={teamName(match.homeId)} side="home" buttons={basket ? BASKETBALL_BUTTONS : FOOTBALL_BUTTONS} foulsLabel={foulsLabel('home')} onEvent={handleEvent} />
               </div>
               <div className="col-12 col-sm-6">
-                <TeamControls name={teamName(match.awayId)} side="away" onEvent={(type, side) => setDraft({ type, side })} />
+                <TeamControls name={teamName(match.awayId)} side="away" buttons={basket ? BASKETBALL_BUTTONS : FOOTBALL_BUTTONS} foulsLabel={foulsLabel('away')} onEvent={handleEvent} />
               </div>
             </div>
 
@@ -187,15 +227,16 @@ export default function Actas() {
           <div className="card border-0 shadow-sm rounded-3 p-3 p-md-4 bg-white h-100">
             <h2 className="h5 fw-bold mb-3" style={{ color: '#1E0A3C' }}>Historial del partido</h2>
             {matchEvents.length === 0 ? (
-              <p className="text-muted small mb-0">Aún no hay eventos. Registra el primer gol o tarjeta.</p>
+              <p className="text-muted small mb-0">{basket ? 'Aún no hay eventos. Registra la primera canasta o falta.' : 'Aún no hay eventos. Registra el primer gol o tarjeta.'}</p>
             ) : (
               <ul className="list-unstyled d-flex flex-column gap-2 overflow-auto mb-0" style={{ maxHeight: '460px' }}>
                 {matchEvents.map((e) => (
                   <li key={e.id} className="d-flex align-items-start gap-2 pb-2 border-bottom small text-dark fw-medium">
-                    <span className={`badge ${EVENT_TYPES[e.type].badge} flex-shrink-0`}>{e.minute}&apos;</span>
+                    <span className={`badge ${EVENT_TYPES[e.type]?.badge ?? 'bg-secondary'} flex-shrink-0`}>{basket && e.period ? `C${e.period} ${e.minute}'` : `${e.minute}'`}</span>
                     <span>
                       {formatEvent(e, teamName(e.side === 'home' ? match.homeId : match.awayId), playerName)}
                       {e.automatic && <span className="text-muted fw-normal"> (doble amarilla)</span>}
+                      {basket && EVENT_TYPES[e.type]?.foul && <span className="text-muted fw-normal"> · {fouls.get(e.playerId) ?? 0} en total{out.has(e.playerId) ? ', eliminado' : ''}</span>}
                     </span>
                   </li>
                 ))}
@@ -213,7 +254,7 @@ export default function Actas() {
           match={{ ...match, lineup: currentLineup }}
           side={draft.side}
           type={draft.type}
-          players={players.filter((p) => !currentLineup.used.includes(p.id) || currentLineup[draft.side].includes(p.id))}
+          players={eventPlayers}
           teamName={teamName}
           onSave={async (data) => {
             const result = await addEvent(match.id, data);

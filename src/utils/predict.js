@@ -10,8 +10,19 @@ function poisson(k, lambda) {
   return p;
 }
 
-export function predictMatch(homeId, awayId, finishedMatches) {
+// Básquetbol: puntos con distribución normal y sin empate (se juega prórroga).
+const BASKET_HOME_POINTS = 3;
+const BASKET_SD = 11;
+function normalCdf(x) {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2);
+  const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t
+    * Math.exp(-(x * x) / 2);
+  return x >= 0 ? (1 + erf) / 2 : (1 - erf) / 2;
+}
+
+export function predictMatch(homeId, awayId, finishedMatches, sport) {
   if (finishedMatches.length === 0) return null;
+  const basket = sport === 'BASQUETBOL';
 
   const table = new Map();
   const row = (id) => {
@@ -43,6 +54,14 @@ export function predictMatch(homeId, awayId, finishedMatches) {
 
   const h = strength(homeId);
   const a = strength(awayId);
+  const minGames = Math.min(h.games, a.games);
+  const confidence = minGames < 3 ? 'Baja' : minGames < 6 ? 'Media' : 'Alta';
+  if (basket) {
+    const expectedHome = league * h.attack * a.defense + BASKET_HOME_POINTS / 2;
+    const expectedAway = league * a.attack * h.defense - BASKET_HOME_POINTS / 2;
+    const home = normalCdf((expectedHome - expectedAway) / (BASKET_SD * Math.SQRT2));
+    return { home, draw: 0, away: 1 - home, expectedHome, expectedAway, confidence };
+  }
   const lambdaHome = Math.max(0.2, league * h.attack * a.defense * HOME_ADVANTAGE);
   const lambdaAway = Math.max(0.2, (league * a.attack * h.defense) / HOME_ADVANTAGE);
 
@@ -58,7 +77,6 @@ export function predictMatch(homeId, awayId, finishedMatches) {
     }
   }
   const total = home + draw + away;
-  const minGames = Math.min(h.games, a.games);
 
   return {
     home: home / total,
@@ -66,6 +84,6 @@ export function predictMatch(homeId, awayId, finishedMatches) {
     away: away / total,
     expectedHome: lambdaHome,
     expectedAway: lambdaAway,
-    confidence: minGames < 3 ? 'Baja' : minGames < 6 ? 'Media' : 'Alta',
+    confidence,
   };
 }

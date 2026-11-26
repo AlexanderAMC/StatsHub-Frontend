@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Form } from 'react-bootstrap';
 import FormModal, { Field } from './FormModal';
-import { POSITIONS } from '../data/constants';
+import { positionsFor } from '../data/constants';
 
-export default function PlayerModal({ player, teamPlayers, onSave, onHide }) {
+export default function PlayerModal({ player, teamPlayers, onSave, onHide, sport }) {
+  const POSITIONS = positionsFor(sport);
   const isEditing = Boolean(player);
   const [values, setValues] = useState({
     name: player?.name ?? '',

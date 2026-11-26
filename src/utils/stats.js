@@ -1,10 +1,14 @@
-import { MATCH_STATUS } from '../data/constants';
+import { EVENT_TYPES, MATCH_STATUS, isBasketball } from '../data/constants';
 import { byDateTime } from './dates';
 
 const emptyRow = (team) => ({ teamId: team.id, team: team.name, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dg: 0, pts: 0 });
 
-// 3 puntos por victoria, 1 por empate. Desempate: puntos, diferencia de gol, goles a favor, nombre.
-export function computeStandings(teams, finishedMatches) {
+// Fútbol: 3 puntos por victoria, 1 por empate. Básquetbol (FIBA): 2 por victoria, 1 por derrota.
+// Desempate: puntos, diferencia, tantos a favor, nombre.
+export function computeStandings(teams, finishedMatches, sport) {
+  const basket = isBasketball(sport);
+  const win = basket ? 2 : 3;
+  const loss = basket ? 1 : 0;
   const table = new Map(teams.map((t) => [t.id, emptyRow(t)]));
 
   for (const { homeId, awayId, scoreHome, scoreAway } of finishedMatches) {
@@ -21,12 +25,14 @@ export function computeStandings(teams, finishedMatches) {
 
     if (scoreHome > scoreAway) {
       h.pg += 1;
-      h.pts += 3;
+      h.pts += win;
       a.pp += 1;
+      a.pts += loss;
     } else if (scoreHome < scoreAway) {
       a.pg += 1;
-      a.pts += 3;
+      a.pts += win;
       h.pp += 1;
+      h.pts += loss;
     } else {
       h.pe += 1;
       a.pe += 1;
@@ -58,10 +64,11 @@ const resultsOf = (teamId, finishedMatches) =>
 export const teamForm = (teamId, finishedMatches, limit = 5) => resultsOf(teamId, finishedMatches).slice(-limit);
 
 // Compara los puntos por partido de los últimos 3 con el promedio de toda la temporada.
-export function teamTrend(teamId, finishedMatches) {
+export function teamTrend(teamId, finishedMatches, sport) {
   const results = resultsOf(teamId, finishedMatches);
   if (results.length < 4) return 'Sin datos';
-  const points = (r) => (r === 'G' ? 3 : r === 'E' ? 1 : 0);
+  const basket = isBasketball(sport);
+  const points = (r) => (r === 'G' ? (basket ? 2 : 3) : r === 'E' || (basket && r === 'P') ? 1 : 0);
   const average = (list) => list.reduce((sum, r) => sum + points(r), 0) / list.length;
   const diff = average(results.slice(-3)) - average(results);
   if (diff > 0.3) return 'Al alza';
@@ -71,7 +78,7 @@ export function teamTrend(teamId, finishedMatches) {
 
 // Partidos jugados = convocados en el acta o que entraron por sustitución.
 export function computePlayerStats(players, matches, events) {
-  const stats = new Map(players.map((p) => [p.id, { pj: 0, goles: 0, asistencias: 0, amarillas: 0, rojas: 0 }]));
+  const stats = new Map(players.map((p) => [p.id, { pj: 0, goles: 0, asistencias: 0, amarillas: 0, rojas: 0, puntos: 0, triples: 0, rebotes: 0, faltas: 0 }]));
   const played = matches.filter((m) => m.status !== MATCH_STATUS.SCHEDULED);
   const participants = new Map(
     played.map((m) => [m.id, new Set([...(m.lineup?.home ?? []), ...(m.lineup?.away ?? [])])]),
@@ -87,6 +94,16 @@ export function computePlayerStats(players, matches, events) {
       const helper = stats.get(e.assistId);
       if (helper) helper.asistencias += 1;
     }
+    if (['punto1', 'punto2', 'punto3'].includes(e.type)) {
+      if (own) {
+        own.puntos += EVENT_TYPES[e.type].points;
+        if (e.type === 'punto3') own.triples += 1;
+      }
+      const helper = stats.get(e.assistId);
+      if (helper) helper.asistencias += 1;
+    }
+    if (e.type === 'rebote' && own) own.rebotes += 1;
+    if (EVENT_TYPES[e.type]?.foul && own) own.faltas += 1;
     if (e.type === 'amarilla' && own) own.amarillas += 1;
     if (e.type === 'roja' && own) own.rojas += 1;
   }

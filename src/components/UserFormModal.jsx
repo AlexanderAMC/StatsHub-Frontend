@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Form } from 'react-bootstrap';
 import FormModal, { Field } from './FormModal';
 import { ASSIGNABLE_ROLES, ROLE_LABELS } from '../data/users';
+import { passwordProblem } from '../utils/password';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,7 +27,7 @@ export default function UserFormModal({ account, onSave, onHide }) {
     if (!values.nombre.trim()) found.nombre = 'Ingresa el nombre.';
     if (!values.apellido.trim()) found.apellido = 'Ingresa el apellido.';
     if (!EMAIL_RE.test(values.correo.trim())) found.correo = 'Ingresa un correo válido.';
-    if (!isEditing && values.password.length < 8) found.password = 'Mínimo 8 caracteres.';
+    if (!isEditing && passwordProblem(values.password)) found.password = passwordProblem(values.password);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 

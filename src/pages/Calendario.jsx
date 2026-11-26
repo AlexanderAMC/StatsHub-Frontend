@@ -64,7 +64,7 @@ export default function Calendario() {
   const predictionFor = (m) => {
     if (predictions[m.id]) return predictions[m.id];
     const finished = matches.filter((x) => x.tournamentId === m.tournamentId && x.status === FINISHED);
-    return predictMatch(m.homeId, m.awayId, finished);
+    return predictMatch(m.homeId, m.awayId, finished, m.sport);
   };
 
   const handleSaveMatch = async (data) => {
@@ -189,7 +189,8 @@ export default function Calendario() {
                     </div>
                     {prediction && (
                       <p className="small text-muted mb-0 mt-2 pt-2 border-top">
-                        Probabilidad estimada: {teamName(m.homeId)} {pct(prediction.home)}, empate {pct(prediction.draw)}, {teamName(m.awayId)} {pct(prediction.away)}.
+                        {/* Básquetbol no tiene empate: se juega prórroga. */}
+                        Probabilidad estimada: {teamName(m.homeId)} {pct(prediction.home)}{m.sport === 'BASQUETBOL' ? '' : `, empate ${pct(prediction.draw)}`}, {teamName(m.awayId)} {pct(prediction.away)}.
                       </p>
                     )}
                   </div>

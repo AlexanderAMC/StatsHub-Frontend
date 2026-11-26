@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { PASSWORD_HINT, passwordProblem } from '../utils/password';
 
 const BRAND = '#1E0A3C';
 
-// RF-03: crear una nueva contraseña desde el enlace enviado por correo (válido 1 hora, un solo uso).
+// RF-03: crear una nueva contraseña desde el enlace enviado por correo (válido 30 minutos, un solo uso).
 export default function Restablecer() {
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
@@ -18,7 +19,8 @@ export default function Restablecer() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.');
+    const problem = passwordProblem(password);
+    if (problem) return setError(problem);
     if (password !== confirm) return setError('Las contraseñas no coinciden.');
     setError('');
     setStatus('loading');
@@ -49,7 +51,7 @@ export default function Restablecer() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate>
-            <p className="text-muted small">Elige una contraseña de al menos 8 caracteres que no uses en otros sitios.</p>
+            <p className="text-muted small">{PASSWORD_HINT}</p>
             <label htmlFor="reset-password" className="form-label fw-semibold">Nueva contraseña</label>
             <div className="input-group mb-3">
               <input id="reset-password" type={show ? 'text' : 'password'} className="form-control" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
