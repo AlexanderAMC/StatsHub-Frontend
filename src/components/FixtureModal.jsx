@@ -19,7 +19,7 @@ export default function FixtureModal({ tournaments, teams, matches, referees, ve
     const id = Number(tournamentId);
     const tournamentMatches = matches.filter((m) => m.tournamentId === id);
     const fixture = buildFixture({
-      teams: teams.filter((t) => t.tournamentId === id),
+      teams: teams.filter((t) => t.tournamentIds.includes(id)),
       matches: tournamentMatches,
       startDate,
       venue,

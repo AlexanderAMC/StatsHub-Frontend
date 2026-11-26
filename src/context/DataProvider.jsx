@@ -171,7 +171,7 @@ export default function DataProvider({ children }) {
     generateFixture: async (tournamentId, startDate, venue) => {
       const tournamentMatches = matches.filter((m) => m.tournamentId === tournamentId);
       const fixture = buildFixture({
-        teams: teams.filter((t) => t.tournamentId === tournamentId),
+        teams: teams.filter((t) => t.tournamentIds.includes(tournamentId)),
         matches: tournamentMatches,
         startDate,
         venue,

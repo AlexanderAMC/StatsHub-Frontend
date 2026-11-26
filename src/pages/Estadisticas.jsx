@@ -228,7 +228,7 @@ export default function Estadisticas() {
     setParams(next, { replace: true });
   };
 
-  const tTeams = useMemo(() => teams.filter((t) => t.tournamentId === tournamentId), [teams, tournamentId]);
+  const tTeams = useMemo(() => teams.filter((t) => t.tournamentIds.includes(tournamentId)), [teams, tournamentId]);
   const tMatches = useMemo(() => matches.filter((m) => m.tournamentId === tournamentId), [matches, tournamentId]);
   const finished = useMemo(() => tMatches.filter((m) => m.status === MATCH_STATUS.FINISHED), [tMatches]);
   const standings = useMemo(() => computeStandings(tTeams, finished), [tTeams, finished]);
